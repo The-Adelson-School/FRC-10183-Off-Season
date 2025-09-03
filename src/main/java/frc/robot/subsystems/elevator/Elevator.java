@@ -37,12 +37,10 @@ public class Elevator extends SubsystemBase {
     
     int stage = 0;
     LazyCANSparkMax elevMotor = new LazyCANSparkMax(6, SparkLowLevel.MotorType.kBrushless);
-    LazyCANSparkMax wristMotor = new LazyCANSparkMax(8, SparkLowLevel.MotorType.kBrushless);
     LazyCANSparkMax intakeMotor = new LazyCANSparkMax(7, SparkLowLevel.MotorType.kBrushless);
 
-    private void goToHeight(int elevSetpoint, int wristSetpoint){
+    private void goToHeight(int elevSetpoint){
         elevMotor.getEncoder().setPosition(elevSetpoint);
-        wristMotor.getEncoder().setPosition(wristSetpoint);
     }
 
     private void setIntakeSpeed(double speed){
@@ -64,16 +62,16 @@ public class Elevator extends SubsystemBase {
     @Override
     public void periodic(){
         if(stage == 0){
-            goToHeight(STOWED_LEVEL, STOWED_ANGLE);
+            goToHeight(STOWED_LEVEL);
         }else if(stage == 1){
-            goToHeight(CORAL_STATION, CORAL_ANGLE);
+            goToHeight(CORAL_STATION);
         }
         else if(stage == 2){
-            goToHeight(LEVEL_ONE, SCORING_ANGLE);
+            goToHeight(LEVEL_ONE);
         }else if(stage == 3){
-            goToHeight(LEVEL_TWO, SCORING_ANGLE);
+            goToHeight(LEVEL_TWO);
         }else if(stage == 4){
-            goToHeight(LEVEL_THREE, SCORING_ANGLE);
+            goToHeight(LEVEL_THREE);
         }
   }
 
