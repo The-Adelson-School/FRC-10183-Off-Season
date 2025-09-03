@@ -18,12 +18,10 @@ import com.revrobotics.spark.SparkLowLevel;
 public class ElevatorSubsystem extends SubsystemBase {
 
     LazyCANSparkMax elevMotor;
-    LazyCANSparkMax wristMotor;
     LazyCANSparkMax intakeMotor;
     
     public ElevatorSubsystem(int elevID, int wristID, int intakeID){
         elevMotor = new LazyCANSparkMax(elevID, SparkLowLevel.MotorType.kBrushless);
-        wristMotor = new LazyCANSparkMax(wristID, SparkLowLevel.MotorType.kBrushless);
         intakeMotor = new LazyCANSparkMax(intakeID, SparkLowLevel.MotorType.kBrushless);
     }
     
@@ -31,7 +29,6 @@ public class ElevatorSubsystem extends SubsystemBase {
     int stage = 0;
     
     PIDController elevController = new PIDController(0.00003, 0.000000, 0.00000); //currently needs testing
-    PIDController wristController = new PIDController(0.00003, 0.00000, 0.00000); // needs test
 
     public int getStage(){
         return stage;
@@ -39,7 +36,6 @@ public class ElevatorSubsystem extends SubsystemBase {
 
     private void goToHeight(int elevSetpoint, int wristSetpoint){
         elevMotor.set(MathUtil.clamp(elevController.calculate(elevMotor.getEncoder().getPosition()*ElevatorConstants.COUNTS_PER_ROTATION, elevSetpoint), -1.0, 1.0));
-        wristMotor.set(MathUtil.clamp(wristController.calculate(wristMotor.getEncoder().getPosition()*ElevatorConstants.WRIST_COUNTS_PER_ROTATION, wristSetpoint), -1.0, 1.0));
     }
 
     public void setIntakeSpeed(double speed) {
