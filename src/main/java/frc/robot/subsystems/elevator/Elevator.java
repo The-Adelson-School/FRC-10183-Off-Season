@@ -23,21 +23,13 @@ public class Elevator extends SubsystemBase {
     public static final int LEVEL_ONE = 0; // change when actual determined
     public static final int LEVEL_TWO = 0; // change when actual determined
     public static final int LEVEL_THREE = 0; // change when actual determined
-
-    //Wrist Set Points
-    public static final int STOWED_ANGLE = 0; // change when actual determined
-    public static final int CORAL_ANGLE = 0; // change when actual determined
-    public static final int SCORING_ANGLE = 0; // change when actual determined
-
-    //Intake Speeds
-    public static final double INTAKE_IN = 1.0; //Maybe needs to be reversed
-    public static final double INTAKE_STOP = 0.0;
-    public static final double INTAKE_OUT = -1.0;
-    
     
     int stage = 0;
     LazyCANSparkMax elevMotor = new LazyCANSparkMax(6, SparkLowLevel.MotorType.kBrushless);
     LazyCANSparkMax intakeMotor = new LazyCANSparkMax(7, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake2Motor = new LazyCANSparkMax(8, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake3Motor = new LazyCANSparkMax(9, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake4Motor = new LazyCANSparkMax(10, SparkLowLevel.MotorType.kBrushless);
 
     private void goToHeight(int elevSetpoint){
         elevMotor.getEncoder().setPosition(elevSetpoint);
@@ -45,6 +37,18 @@ public class Elevator extends SubsystemBase {
 
     private void setIntakeSpeed(double speed){
         intakeMotor.set(speed);
+    }
+
+    private void setIntake2Speed(double speed){
+        intake2Motor.set(speed);
+    }
+
+    private void setIntake3Speed(double speed){
+        intake3Motor.set(speed);
+    }
+
+    private void setIntake4Speed(double speed){
+        intake4Motor.set(speed);
     }
 
     private void increaseStage(){

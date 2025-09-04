@@ -4,7 +4,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
 
 public class DecreaseCommand extends Command {
-    ElevatorSubsystem elevator = new ElevatorSubsystem(6, 7, 8);
+    ElevatorSubsystem elevator = new ElevatorSubsystem(6, 8, 8, 8, 8);
     int curStage = elevator.getStage();
 
     @Override
