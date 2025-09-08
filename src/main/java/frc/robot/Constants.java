@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Millisecond;
+
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 import swervelib.math.Matter;
@@ -81,6 +83,11 @@ public final class Constants
     public static final double INTAKE4_IN = 0.3; //Maybe needs to be reversed
     public static final double INTAKE4_STOP = 0.0;
     public static final double INTAKE4_OUT = -0.95;
+
+    public static final double INTAKE_SPEED_MS = 450; //450 milliseconds
+    public static final double INTAKE2_SPEED_MS = 450; 
+    public static final double INTAKE3_SPEED_MS = 450; 
+    public static final double INTAKE4_SPEED_MS = 450; 
   }
 
   public static class HangerConstants{

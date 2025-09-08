@@ -49,7 +49,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     
         // Pause for .45 seconds
         try {
-            Thread.sleep(450);
+            Thread.sleep((long)ElevatorConstants.INTAKE_SPEED_MS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -62,7 +62,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     
         // Pause for .45 seconds
         try {
-            Thread.sleep(450);
+            Thread.sleep((long)ElevatorConstants.INTAKE2_SPEED_MS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -75,7 +75,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     
         // Pause for .45 seconds
         try {
-            Thread.sleep(450);
+            Thread.sleep((long)ElevatorConstants.INTAKE3_SPEED_MS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -88,7 +88,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     
         // Pause for .45 seconds
         try {
-            Thread.sleep(450);
+            Thread.sleep((long)ElevatorConstants.INTAKE4_SPEED_MS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

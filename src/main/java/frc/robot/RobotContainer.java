@@ -289,7 +289,4 @@ public Command reefTagIntakeStage1Command() {
   .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
   .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)));
 }
-System.out.println("Hello World");
-
-
 }
