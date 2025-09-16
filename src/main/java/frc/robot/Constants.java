@@ -88,6 +88,12 @@ public final class Constants
     public static final double INTAKE2_SPEED_MS = 450; 
     public static final double INTAKE3_SPEED_MS = 450; 
     public static final double INTAKE4_SPEED_MS = 450; 
+
+    public static final double INTAKE_P = 0.1; 
+    public static final double INTAKE_I = 0.0; 
+    public static final double INTAKE_D = 0.01;
+
+    public static final double INTAKE_TARGET_POSITION = 100; 
   }
 
   public static class HangerConstants{

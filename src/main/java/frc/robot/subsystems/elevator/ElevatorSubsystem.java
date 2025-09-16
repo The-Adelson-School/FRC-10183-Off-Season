@@ -44,17 +44,20 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotor.set(MathUtil.clamp(elevController.calculate(elevMotor.getEncoder().getPosition()*ElevatorConstants.COUNTS_PER_ROTATION, elevSetpoint), -1.0, 1.0));
     }
 
-    public void setIntakeSpeed(double speed) {
-        intakeMotor.set(speed); // Start spinning
+    private PIDController intakeController = new PIDController(0.1, 0.0, 0.01);
+
+    public void setIntakeSpeed(double targetPosition) {
+        // Get current encoder position
+        double currentPosition = intakeMotor.getEncoder().getPosition();
     
-        // Pause for .45 seconds
-        try {
-            Thread.sleep((long)ElevatorConstants.INTAKE_SPEED_MS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        // Calculate PID output
+        double pidOutput = intakeController.calculate(currentPosition, targetPosition);
     
-        intakeMotor.set(0);
+        // Clamp output to safe motor range
+        double motorOutput = MathUtil.clamp(pidOutput, -1.0, 1.0);
+    
+        // Set motor speed
+        intakeMotor.set(motorOutput);
     }
 
     public void setIntake2Speed(double speed) {
