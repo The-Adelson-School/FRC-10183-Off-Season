@@ -1,0 +1,51 @@
+import edu.wpi.first.wpilibj2.command.CommandBase;
+import frc.robot.subsystems.SwerveSubsystem;
+import frc.robot.Constants;
+
+public class DriveForwardOneMeter extends CommandBase {
+    private final SwerveSubsystem swerve;
+    private double[] startPositions;
+    private final double targetDistance = 1.0; // meters
+
+    public DriveForwardOneMeter(SwerveSubsystem swerve) {
+        this.swerve = swerve;
+        addRequirements(swerve);
+    }
+
+    @Override
+    public void initialize() {
+        startPositions = swerve.getDriveEncoderPositions();
+    }
+
+    @Override
+    public void execute() {
+        boolean allReached = true;
+
+        double[] current = swerve.getDriveEncoderPositions();
+
+        for (int i = 0; i < current.length; i++) {
+            double traveled = (current[i] - startPositions[i]) * Constants.METERS_PER_TICK;
+
+            if (traveled < targetDistance) {
+                swerve.setModule(i, 0.3, 0.0); // drive forward
+                allReached = false;
+            } else {
+                swerve.setModule(i, 0.0, 0.0); // stop
+            }
+        }
+
+        if (allReached) {
+            this.end(false);
+        }
+    }
+
+    @Override
+    public void end(boolean interrupted) {
+        swerve.stopModules();
+    }
+
+    @Override
+    public boolean isFinished() {
+        return false; // handled in execute
+    }
+}
