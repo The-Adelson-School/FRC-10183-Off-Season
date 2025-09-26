@@ -29,9 +29,7 @@ public class AutoMovements {
         aprilTagLayout = layout;
     }
 
-    /**
-     * Get tag pose from the loaded field layout
-     */
+
     private static Pose2d getTagPose(int tagId) {
         var tagPoseOpt = aprilTagLayout.getTagPose(tagId);
         if (tagPoseOpt.isPresent()) {
@@ -40,7 +38,7 @@ public class AutoMovements {
         throw new RuntimeException("No AprilTag found with ID: " + tagId);
     }
     
-    // Offset helper methods
+
     private static Transform2d createCoralOffset(boolean isLeft) {
         double sideOffset = isLeft ? Constants.FieldMovementConstants.LEFT_SIDE_OFFSET : -Constants.FieldMovementConstants.RIGHT_SIDE_OFFSET;
         return new Transform2d(
@@ -57,7 +55,6 @@ public class AutoMovements {
         );
     }
     
-    // Field position definitions using AprilTag positions with offsets
     public enum FieldPosition {
         // RED ALLIANCE POSITIONS
         // Tag 7 positions (Red A,B)

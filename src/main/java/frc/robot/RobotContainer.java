@@ -55,6 +55,7 @@ public class RobotContainer
   private final ElevatorSubsystem elevator = new ElevatorSubsystem(6, 7, 8, 8, 8);
   private final HangerSubsystem hanger = new HangerSubsystem(9);
   private final AutoMovements autoMovements = new AutoMovements(drivebase);
+  private final ClosestMovement closestMovement = new ClosestMovement(autoMovements, drivebase);
  // private final AlgaeSubsystem algae = new AlgaeSubsystem(9, 10);
   
   
@@ -189,7 +190,8 @@ public class RobotContainer
       elevator.setDefaultCommand(new InstantCommand(() -> elevator.defaultCommand(), elevator));
     //  algae.setDefaultCommand(new InstantCommand(() -> algae.defaultCommand(), algae));
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-      driverXbox.x().onTrue(Commands.runOnce(drivebase::addFakeVisionReading));
+      driverXbox.x().onTrue(closestMovement.moveToClosestRightPosition());
+      driverXbox.y().onTrue(closestMovement.moveToClosestLeftPosition());
       driverXbox.b().whileTrue(
           drivebase.driveToPose(
               new Pose2d(new Translation2d(4, 4), Rotation2d.fromDegrees(0)))
