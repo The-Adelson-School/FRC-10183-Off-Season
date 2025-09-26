@@ -44,17 +44,70 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotor.set(MathUtil.clamp(elevController.calculate(elevMotor.getEncoder().getPosition()*ElevatorConstants.COUNTS_PER_ROTATION, elevSetpoint), -1.0, 1.0));
     }
 
+    private PIDController intakePIDController;
+    private double targetPosition = 0; 
+    private double targetVelocity = 0; 
+    private boolean usePositionControl = true;
+
+    // In constructor, initialize PID controller
+    public ElevatorSubsystem(){
+        // Initialize PID controller with tuned constants.
+        intakePIDController = new PIDController(0.1, 0.0, 0.0);
+        intakePIDController.setTolerance(0.01); // Set PID tolerances
+    }
+
     public void setIntakeSpeed(double speed) {
-        intakeMotor.set(speed); // Start spinning
-    
-        // Pause for .45 seconds
-        try {
-            Thread.sleep((long)ElevatorConstants.INTAKE_SPEED_MS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (usePositionControl){
+            // Position-based control
+            targetPosition = getCurrentPosition() + (speed * ElevatorConstants.INTAKE_ROTATION_DISTANCE);
+            intakePIDController.setSetpoint(targetPosition); 
+        }else{
+            // Velocity-based control
+            targetVelocity = speed; 
+            intakePIDController.setSetpoint(targetVelocity);
         }
-    
+    }
+
+    // Call this method periodically (in periodic() method)
+    public void updateIntakePID(){
+        double pidOutput; // Position control
+        if (usePositionControl){
+            pidOutput = intakePIDController.calculate(getCurrentPosition()); 
+            // Stop motor when at target position
+            if (intakePIDController.atSetpoint()){
+                intakeMotor.set(0); 
+                return;
+            }
+        }else{
+            // Velocity control
+            pidOutput = intakePIDController.calculate(getCurrentVelocity()); 
+        }
+
+        // Apply output limits
+        pidOutput = Math.max(-1.0, Math.min(1.0, pidOutput));
+        intakeMotor.set(pidOutput);
+    }
+
+    // Helper methods to get encoder values
+    private double getCurrentPosition() {
+        // Replace with your actual encoder method
+        return intakeMotor.getEncoder().getPosition();
+    }
+
+    private double getCurrentVelocity() {
+        // Replace with your actual encoder method
+        return intakeMotor.getEncoder().getVelocity();
+    }
+
+    // Method to check if intake is at target
+    public boolean isAtTarget() {
+        return intakePIDController.atSetpoint();
+    }
+
+    // Method to stop intake
+    public void stopIntake() {
         intakeMotor.set(0);
+        intakePIDController.reset();
     }
 
     public void setIntake2Speed(double speed) {

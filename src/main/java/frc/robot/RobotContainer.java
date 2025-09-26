@@ -1,6 +1,6 @@
 // Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+// Open Source Software; you can modify and/or share it under the terms of the
+// WPILib BSD license file in the root directory of this project.
 // THIS SHOULD BE ON FRC OFF SEASON
 package frc.robot; 
 import com.pathplanner.lib.auto.NamedCommands;
@@ -23,11 +23,14 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ElevatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.elevator.AutoAlignWrapper;
+// import frc.robot.Constants.AlgaeConstants;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
 import frc.robot.subsystems.elevator.AutoAlignWrapper;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.hanger.HangerSubsystem;
 import frc.robot.subsystems.AlignToReefTagRelative;
+import frc.robot.AutoMovements;
+// import frc.robot.subsystems.algae.AlgaeSubsystem;
 import java.io.File;
 import swervelib.SwerveInputStream;
 import com.pathplanner.lib.auto.NamedCommands;
@@ -49,8 +52,10 @@ public class RobotContainer
   // The robot's subsystems and commands are defined here...
   private final SwerveSubsystem       drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
                                                                                 "swerve"));
-  private final ElevatorSubsystem elevator = new ElevatorSubsystem(6, 8, 8, 8, 8);
+  private final ElevatorSubsystem elevator = new ElevatorSubsystem(6, 7, 8, 8, 8);
   private final HangerSubsystem hanger = new HangerSubsystem(9);
+  private final AutoMovements autoMovements = new AutoMovements(drivebase);
+ // private final AlgaeSubsystem algae = new AlgaeSubsystem(9, 10);
   
   
 
@@ -166,8 +171,7 @@ public class RobotContainer
                                                                              90))));
       driverXbox.start().onTrue(Commands.runOnce(() -> drivebase.resetOdometry(new Pose2d(3, 3, new Rotation2d()))));
       driverXbox.button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
-      driverXbox.button(2).whileTrue(Commands.runEnd(() -> driveDirectAngleKeyboard.driveToPoseEnabled(true),
-                                                     () -> driveDirectAngleKeyboard.driveToPoseEnabled(false)));
+      driverXbox.button(2).whileTrue(Commands.print("Drive to pose simulation test"));
 
     }
     if (DriverStation.isTest())
@@ -183,6 +187,7 @@ public class RobotContainer
     } else
     {
       elevator.setDefaultCommand(new InstantCommand(() -> elevator.defaultCommand(), elevator));
+    //  algae.setDefaultCommand(new InstantCommand(() -> algae.defaultCommand(), algae));
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
       driverXbox.x().onTrue(Commands.runOnce(drivebase::addFakeVisionReading));
       driverXbox.b().whileTrue(
@@ -211,37 +216,31 @@ operatorXbox.leftBumper()
     operatorXbox.y().onTrue(new InstantCommand(() -> hanger.setStage(1), hanger));
     operatorXbox.x().onTrue(new InstantCommand(() -> hanger.setStage(0), hanger));
     operatorXbox.a().onTrue(new InstantCommand(() -> hanger.setStage(2), hanger));
-    //Camera Stuff
+    //Camera Stuff - Right bumper for original limelight
     driverXbox.rightBumper().onTrue(
         new SequentialCommandGroup(
-            // Align with the reef tag
+            // Align with the reef tag using original limelight
             new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase),
+            new AlignToReefTagRelative(true, drivebase, false),
             new InstantCommand(() -> elevator.engageStage(4))
             ),
             // Set intake motor to output
             new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
         )
     );
-    driverXbox.a().onTrue(
-      new SequentialCommandGroup(
-        new InstantCommand(() -> elevator.engageStage(2)),
-        new WaitCommand(6),
-        new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
-      )
-    );
-
+    
+    // Left bumper for second limelight (opposite side)
     driverXbox.leftBumper().onTrue(
     new SequentialCommandGroup(
-        // Run AlignToReefTagRelative and engageStage(4) simultaneously
+        // Run AlignToReefTagRelative with second limelight and engageStage(3) simultaneously
         new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase),
+            new AlignToReefTagRelative(true, drivebase, true),
             new InstantCommand(() -> elevator.engageStage(3))
         ),
         new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
     )
-);
-driverXbox.leftTrigger().onTrue(
+    );
+    driverXbox.leftTrigger().onTrue(
     new ParallelCommandGroup(
       new AlignToReefTagRelative(true, drivebase),
       new InstantCommand(() -> elevator.engageStage(1))
@@ -249,6 +248,10 @@ driverXbox.leftTrigger().onTrue(
     .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
     .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
 );
+    //  operatorXbox.x().whileTrue(new InstantCommand(() -> algae.setIntakeSpeed(AlgaeConstants.INTAKE_IN), algae));
+    // operatorXbox.b().whileTrue(new InstantCommand(() -> algae.setIntakeSpeed(AlgaeConstants.INTAKE_OUT), algae));
+    // operatorXbox.y().whileTrue(new InstantCommand(() -> algae.lowerArm(), algae));
+    // operatorXbox.a().whileTrue(new InstantCommand(() -> algae.raiseArm(), algae));
     }
 
   }
@@ -271,7 +274,7 @@ driverXbox.leftTrigger().onTrue(
   public Command reefTagIntakeSequence() {
     return new SequentialCommandGroup(
         new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase),
+            new AlignToReefTagRelative(true, drivebase, false),
             new InstantCommand(() -> elevator.engageStage(4))
         ),
         new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
@@ -283,10 +286,12 @@ private void registerNamedCommands() {
 }
 public Command reefTagIntakeStage1Command() {
   return new ParallelCommandGroup(
-      new AlignToReefTagRelative(true, drivebase),
+      new AlignToReefTagRelative(true, drivebase, false),
       new InstantCommand(() -> elevator.engageStage(1))
   )
   .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
   .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)));
 }
+
+
 }

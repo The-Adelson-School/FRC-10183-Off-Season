@@ -29,12 +29,14 @@ import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import frc.robot.Constants;
+import frc.robot.subsystems.elevator.ElevatorSubsystem;
 import frc.robot.subsystems.swervedrive.Vision.Cameras;
 import java.io.File;
 import java.io.IOException;
@@ -84,6 +86,13 @@ public class SwerveSubsystem extends SubsystemBase
   private Vision vision;
 
   /**
+   * Vision processing system for AprilTag odometry updates
+   */
+  private LimeLightStuff visionSystem;
+
+  private final ShuffleboardTab visionTab = Shuffleboard.getTab("Vision");
+
+  /**
    * Initialize {@link SwerveDrive} with the directory provided.
    *
    * @param directory Directory of swerve drive config files.
@@ -119,6 +128,8 @@ public class SwerveSubsystem extends SubsystemBase
       swerveDrive.stopOdometryThread();
     }
     setupPathPlanner();
+    // Initialize vision system
+    setupVisionSystem();
   }
 
 
@@ -150,15 +161,68 @@ public class SwerveSubsystem extends SubsystemBase
     vision = new Vision(swerveDrive::getPose, swerveDrive.field);
   }
 
+  /**
+   * Setup the vision processing system
+   */
+  private void setupVisionSystem() {
+    visionSystem = new LimeLightStuff(this::processVisionMeasurement);
+    System.out.println("Vision system initialized with dual Limelight support");
+  }
+
+  /**
+
+   */
+  private void processVisionMeasurement(LimeLightStuff.VisionMeasurement measurement) {
+
+    var standardDeviations = edu.wpi.first.math.VecBuilder.fill(
+        measurement.confidence * Constants.VisionConstants.XY_STD_DEV_FACTOR,       
+        measurement.confidence * Constants.VisionConstants.XY_STD_DEV_FACTOR,          
+        measurement.confidence * Constants.VisionConstants.ROTATION_STD_DEV_FACTOR   
+    );
+    
+    
+    swerveDrive.addVisionMeasurement(
+        measurement.pose,                    
+        measurement.timestampSeconds,        
+        standardDeviations
+    );
+    
+    // Log the measurement for debugging
+    visionTab.add("Last Update Source", measurement.source);
+    visionTab.add("Last Update X", measurement.pose.getX());
+    visionTab.add("Last Update Y", measurement.pose.getY());
+    visionTab.add("Last Update Rotation", measurement.pose.getRotation().getDegrees());
+    visionTab.add("Last Update Timestamp", measurement.timestampSeconds);
+    visionTab.add("Last Update Tag Count", measurement.tagCount);
+  }
+
   @Override
   public void periodic() {
 
       // Update odometry frequently
       swerveDrive.updateOdometry();
   
-SmartDashboard.putNumber("Gyro Heading", swerveDrive.getPose().getRotation().getDegrees());
+    // Update robot orientation for MegaTag2
+    if (visionSystem != null) {
+      double yawDegrees = getHeading().getDegrees();
+      double yawRateRadPerSec = swerveDrive.getRobotVelocity().omegaRadiansPerSecond;
+      double yawRateDegPerSec = Units.radiansToDegrees(yawRateRadPerSec);
+      
+      visionSystem.updateRobotOrientation(yawDegrees, yawRateDegPerSec);
+      visionSystem.processVisionMeasurements();
+    }
+
+    Shuffleboard.getTab("Drivetrain").add("Gyro Heading", swerveDrive.getPose().getRotation().getDegrees());
+    Shuffleboard.getTab("Drivetrain").add("Robot X Position", swerveDrive.getPose().getX());
+    Shuffleboard.getTab("Drivetrain").add("Robot Y Position", swerveDrive.getPose().getY());
   }
 
+  /**
+   * Get the vision system for direct access if needed
+   */
+  public LimeLightStuff getVisionSystem() {
+    return visionSystem;
+  }
 
   
   @Override
