@@ -1,6 +1,6 @@
 // Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+// Open Source Software; you can modify and/or share it under the terms of the
+// WPILib BSD license file in the root directory of this project.
 
 package frc.robot;
 
@@ -52,56 +52,27 @@ public final class Constants
   }
 
   public static class ElevatorConstants{
-    //Elevator Math
-    public static final int COUNTS_PER_ROTATION = 630; // 3402 but 630 rn because no 2nd 9:1 gear thing
-    public static final double MAX_EXTENTION_INCHES = 22.875; // 22.875
+    //Elevator Math - TalonFX motors use rotations, not counts
+    // TalonFX integrated encoder: 2048 counts per rotation, but we work in rotations
+    public static final double MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION = 4.0; // 4:1 gear ratio
+    public static final double MAX_EXTENTION_INCHES = 30; // 22.875
     public static final double INCHES_PER_ROTATION = 0.28;
+    
+    // For compatibility with existing code, convert to "counts" equivalent
+    public static final int COUNTS_PER_ROTATION = (int)(2048 * MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION); // 2048 * 4 = 8192
     public static final double COUNTS_PER_INCH = COUNTS_PER_ROTATION/INCHES_PER_ROTATION;
 
-    //Wrist Math
-    public static final int WRIST_COUNTS_PER_ROTATION = 1050; //126
-    public static final int MAX_DEGREES = 0; //need to find
-    public static final double DEGREES_PER_ROTATION = 4.8; // 360
-    public static final double COUNTS_PER_DEGREE = WRIST_COUNTS_PER_ROTATION/DEGREES_PER_ROTATION;
-    
-    
-    //Elevator Set Points
-    public static final int HANGING_LEVEL =(int)(1.75 * COUNTS_PER_INCH);
-    public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int CORAL_STATION = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int LEVEL_ONE = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int LEVEL_TWO = (int)(4 * COUNTS_PER_INCH); // 11.75 in
-    public static final int LEVEL_THREE = (int)(22.275 * COUNTS_PER_INCH);; // 22.875 in
-    public static final int LEVEL_FOUR = (int)(21.875 * COUNTS_PER_INCH); // 22.875 in
-
-    //Wrist Set Points
-    public static final int STOWED_ANGLE = 10; 
-    public static final int CORAL_ANGLE = -(int)(58 * COUNTS_PER_DEGREE); // aprx. 50° NEEDS TO BE INVERTED
-    public static final int SCORING_ANGLE = -(int)(20 * COUNTS_PER_DEGREE); // aprx. 25° 
-    public static final int HANGING_ANGLE = -(int)(160 * COUNTS_PER_DEGREE);
-    public static final int LEVEL_FOUR_ANGLE = -(int)(125 * COUNTS_PER_DEGREE); // aprx. 180° NEEDS TO BE INVERTED
+    //Elevator Set Points (Only 3 stages: 0, 1, 2)
+    public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);      // Stage 0
+    public static final int LEVEL_ONE = (int)(4 * COUNTS_PER_INCH);            // Stage 1 - ~117,000 counts
+    public static final int LEVEL_TWO = (int)(22.275 * COUNTS_PER_INCH);       // Stage 2 - ~652,000 counts
 
     //Intake Speeds
-    public static final double INTAKE_IN = 0.3; //Maybe needs to be reversed
+    public static final double INTAKE_IN = 0.3;
     public static final double INTAKE_STOP = 0.0;
     public static final double INTAKE_OUT = -0.95;
 
-    public static final double INTAKE2_IN = 0.3; //Maybe needs to be reversed
-    public static final double INTAKE2_STOP = 0.0;
-    public static final double INTAKE2_OUT = -0.95; 
-
-    public static final double INTAKE3_IN = 0.3; //Maybe needs to be reversed
-    public static final double INTAKE3_STOP = 0.0;
-    public static final double INTAKE3_OUT = -0.95;
-
-    public static final double INTAKE4_IN = 0.3; //Maybe needs to be reversed
-    public static final double INTAKE4_STOP = 0.0;
-    public static final double INTAKE4_OUT = -0.95;
-
     public static final double INTAKE_SPEED_MS = 450; //milliseconds to run intake motor
-    public static final double INTAKE2_SPEED_MS = 450; 
-    public static final double INTAKE3_SPEED_MS = 450; 
-    public static final double INTAKE4_SPEED_MS = 450;
 
     public static final double INTAKE_P = 0.1; 
     public static final double INTAKE_I = 0.0;

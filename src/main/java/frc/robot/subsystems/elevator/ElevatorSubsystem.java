@@ -3,7 +3,8 @@ package frc.robot.subsystems.elevator;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.utility.LazyCANSparkMax;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import frc.robot.Constants.ElevatorConstants;
 import edu.wpi.first.math.controller.*;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -11,26 +12,23 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.Command; 
 import static edu.wpi.first.units.Units.Seconds;
 
-import com.revrobotics.spark.SparkLowLevel;
-
-
-
 public class ElevatorSubsystem extends SubsystemBase {
 
-    LazyCANSparkMax elevMotor;
-    LazyCANSparkMax intakeMotor;
-    LazyCANSparkMax intake2Motor;
-    LazyCANSparkMax intake3Motor;
-    LazyCANSparkMax intake4Motor;
+    TalonFX elevMotor;
+    TalonFX intakeMotor;
     
-    public ElevatorSubsystem(int elevID, int intakeID, int intake2ID, int intake3ID, int intake4ID){
-        elevMotor = new LazyCANSparkMax(elevID, SparkLowLevel.MotorType.kBrushless);
-        intakeMotor = new LazyCANSparkMax(intakeID, SparkLowLevel.MotorType.kBrushless);
-        intake2Motor = new LazyCANSparkMax(intake2ID, SparkLowLevel.MotorType.kBrushless);
-        intake3Motor = new LazyCANSparkMax(intake3ID, SparkLowLevel.MotorType.kBrushless);
-        intake4Motor = new LazyCANSparkMax(intake4ID, SparkLowLevel.MotorType.kBrushless);
+    public ElevatorSubsystem(int elevID, int intakeID, int unused1, int unused2, int unused3){
+        elevMotor = new TalonFX(elevID);
+        intakeMotor = new TalonFX(intakeID);
+        
+        // Configure motors for brake mode
+        elevMotor.setNeutralMode(NeutralModeValue.Brake);
+        intakeMotor.setNeutralMode(NeutralModeValue.Brake);
+        
+        // Reset encoder positions to zero
+        elevMotor.setPosition(0);
+        intakeMotor.setPosition(0);
     }
-    
     
     int stage = 0;
     
@@ -41,7 +39,9 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
 
     private void goToHeight(int elevSetpoint){
-        elevMotor.set(MathUtil.clamp(elevController.calculate(elevMotor.getEncoder().getPosition()*ElevatorConstants.COUNTS_PER_ROTATION, elevSetpoint), -1.0, 1.0));
+        // Get current position from TalonFX encoder (in rotations, multiply by gear ratio for actual counts)
+        double currentPosition = elevMotor.getPosition().getValueAsDouble() * ElevatorConstants.COUNTS_PER_ROTATION;
+        elevMotor.set(MathUtil.clamp(elevController.calculate(currentPosition, elevSetpoint), -1.0, 1.0));
     }
 
     private PIDController intakePIDController;
@@ -57,46 +57,16 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
 
     public void setIntakeSpeed(double speed) {
-        if (usePositionControl){
-            // Position-based control
-            targetPosition = getCurrentPosition() + (speed * ElevatorConstants.INTAKE_ROTATION_DISTANCE);
-            intakePIDController.setSetpoint(targetPosition); 
-        }else{
-            // Velocity-based control
-            targetVelocity = speed; 
-            intakePIDController.setSetpoint(targetVelocity);
-        }
-    }
-
-    // Call this method periodically (in periodic() method)
-    public void updateIntakePID(){
-        double pidOutput; // Position control
-        if (usePositionControl){
-            pidOutput = intakePIDController.calculate(getCurrentPosition()); 
-            // Stop motor when at target position
-            if (intakePIDController.atSetpoint()){
-                intakeMotor.set(0); 
-                return;
-            }
-        }else{
-            // Velocity control
-            pidOutput = intakePIDController.calculate(getCurrentVelocity()); 
-        }
-
-        // Apply output limits
-        pidOutput = Math.max(-1.0, Math.min(1.0, pidOutput));
-        intakeMotor.set(pidOutput);
+        intakeMotor.set(speed);
     }
 
     // Helper methods to get encoder values
     private double getCurrentPosition() {
-        // Replace with your actual encoder method
-        return intakeMotor.getEncoder().getPosition();
+        return intakeMotor.getPosition().getValueAsDouble();
     }
 
     private double getCurrentVelocity() {
-        // Replace with your actual encoder method
-        return intakeMotor.getEncoder().getVelocity();
+        return intakeMotor.getVelocity().getValueAsDouble();
     }
 
     // Method to check if intake is at target
@@ -110,50 +80,8 @@ public class ElevatorSubsystem extends SubsystemBase {
         intakePIDController.reset();
     }
 
-    public void setIntake2Speed(double speed) {
-        intake2Motor.set(speed); // Start spinning
-    
-        // Pause for .45 seconds
-        try {
-            Thread.sleep((long)ElevatorConstants.INTAKE2_SPEED_MS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    
-        intake2Motor.set(0);
-    }
-    
-    public void setIntake3Speed(double speed) {
-        intake3Motor.set(speed); // Start spinning
-    
-        // Pause for .45 seconds
-        try {
-            Thread.sleep((long)ElevatorConstants.INTAKE3_SPEED_MS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    
-        intake3Motor.set(0);
-    }
-
-    public void setIntake4Speed(double speed) {
-        intake4Motor.set(speed); // Start spinning
-    
-        // Pause for .45 seconds
-        try {
-            Thread.sleep((long)ElevatorConstants.INTAKE4_SPEED_MS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    
-        intake4Motor.set(0);
-    }
-    
-    
-
-
     public void increaseStage(){
-        if(stage < 5){
+        if(stage < 2){  // Changed from 5 to 2 (stages 0, 1, 2)
             stage++;
             engageStage();
         }
@@ -166,64 +94,62 @@ public class ElevatorSubsystem extends SubsystemBase {
         }
     }
 
-    
     public void engageStage() {
-        // Use the current stage variable as the target stage
         engageStage(stage);
     }
     
-    // Existing engageStage method with an argument
     public void engageStage(int targetStage) {
-        stage = targetStage;
+        stage = Math.max(0, Math.min(2, targetStage)); // Clamp to 0-2 range
         SmartDashboard.putNumber("Stage", stage);
+        
         if (stage == 0) {
             goToHeight(ElevatorConstants.STOWED_LEVEL);
+            // Auto-start intake when in stage 0
+            intakeMotor.set(ElevatorConstants.INTAKE_IN);
         } else if (stage == 1) {
-            goToHeight(ElevatorConstants.CORAL_STATION);
-        } else if (stage == 2) {
             goToHeight(ElevatorConstants.LEVEL_ONE);
-        } else if (stage == 3) {
+            // Auto-stop intake when not in stage 0
+            intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+        } else if (stage == 2) {
             goToHeight(ElevatorConstants.LEVEL_TWO);
-        } else if (stage == 4) {
-            goToHeight(ElevatorConstants.LEVEL_THREE);
-        } else if (stage == 5) {
-            goToHeight(ElevatorConstants.LEVEL_FOUR);
+            // Auto-stop intake when not in stage 0
+            intakeMotor.set(ElevatorConstants.INTAKE_STOP);
         }
     }
     
     public void defaultCommand() {
         engageStage(); 
-        // Remove this line to stop overriding intake motor speed:
-        intakeMotor.set(ElevatorConstants.INTAKE_STOP); 
-        intake2Motor.set(ElevatorConstants.INTAKE2_STOP);
-        intake3Motor.set(ElevatorConstants.INTAKE3_STOP);
-        intake4Motor.set(ElevatorConstants.INTAKE4_STOP);
-
-        
+        // Remove the manual intake stop since it's now handled in engageStage()
     }
 
     public void autonomousCommand(){
-        stage = 2;
+        stage = 1;  // Changed from 2 to 1
         engageStage();
-               // Pause for .45 seconds
-               try {
-                Thread.sleep(1500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
         setIntakeSpeed(ElevatorConstants.INTAKE_OUT);
-        setIntake2Speed(ElevatorConstants.INTAKE2_OUT);
-        setIntake3Speed(ElevatorConstants.INTAKE3_OUT);
-        setIntake4Speed(ElevatorConstants.INTAKE4_OUT);
+        
         stage = 0;
         engageStage();
-               // Pause for .45 seconds
-               try {
-                Thread.sleep(1500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
-    
 
+    @Override
+    public void periodic() {
+        // Add telemetry for debugging
+        SmartDashboard.putNumber("Elevator Position", elevMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putNumber("Intake Position", intakeMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putNumber("Elevator Current", elevMotor.getStatorCurrent().getValueAsDouble());
+        SmartDashboard.putNumber("Intake Current", intakeMotor.getStatorCurrent().getValueAsDouble());
+    }
 }

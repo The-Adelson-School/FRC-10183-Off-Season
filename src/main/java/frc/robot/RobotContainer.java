@@ -23,14 +23,11 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ElevatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.elevator.AutoAlignWrapper;
-// import frc.robot.Constants.AlgaeConstants;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
-import frc.robot.subsystems.elevator.AutoAlignWrapper;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.hanger.HangerSubsystem;
 import frc.robot.subsystems.AlignToReefTagRelative;
 import frc.robot.AutoMovements;
-// import frc.robot.subsystems.algae.AlgaeSubsystem;
 import java.io.File;
 import swervelib.SwerveInputStream;
 import com.pathplanner.lib.auto.NamedCommands;
@@ -56,7 +53,6 @@ public class RobotContainer
   private final HangerSubsystem hanger = new HangerSubsystem(9);
   private final AutoMovements autoMovements = new AutoMovements(drivebase);
   private final ClosestMovement closestMovement = new ClosestMovement(autoMovements, drivebase);
- // private final AlgaeSubsystem algae = new AlgaeSubsystem(9, 10);
   
   
 
@@ -188,7 +184,6 @@ public class RobotContainer
     } else
     {
       elevator.setDefaultCommand(new InstantCommand(() -> elevator.defaultCommand(), elevator));
-    //  algae.setDefaultCommand(new InstantCommand(() -> algae.defaultCommand(), algae));
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
       driverXbox.x().onTrue(closestMovement.moveToClosestRightPosition());
       driverXbox.y().onTrue(closestMovement.moveToClosestLeftPosition());
@@ -199,63 +194,75 @@ public class RobotContainer
       driverXbox.start().whileTrue(Commands.none());
       driverXbox.back().whileTrue(Commands.none());
       driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
-  //    driverXbox.rightBumper().onTrue(Commands.none());
+
       //Operator Bindings
       operatorXbox.povUp().onTrue(new InstantCommand(() -> elevator.increaseStage(), elevator));
       operatorXbox.povDown().onTrue(new InstantCommand(() -> elevator.decreaseStage(), elevator));
-    //  operatorXbox.rightBumper().whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN), elevator));
-    //  operatorXbox.leftBumper().whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT), elevator));
-      // Right bumper: Spins intake inward while held
-operatorXbox.rightBumper()
-.whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN), elevator))
-.onFalse(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP), elevator));
 
-// Left bumper: Spins intake outward while held
-operatorXbox.leftBumper()
-.whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT), elevator))
-.onFalse(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP), elevator));
-    //Hanger Stuff
-    operatorXbox.y().onTrue(new InstantCommand(() -> hanger.setStage(1), hanger));
-    operatorXbox.x().onTrue(new InstantCommand(() -> hanger.setStage(0), hanger));
-    operatorXbox.a().onTrue(new InstantCommand(() -> hanger.setStage(2), hanger));
-    //Camera Stuff - Right bumper for original limelight
-    driverXbox.rightBumper().onTrue(
-        new SequentialCommandGroup(
-            // Align with the reef tag using original limelight
-            new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase, false),
-            new InstantCommand(() -> elevator.engageStage(4))
-            ),
-            // Set intake motor to output
-            new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
-        )
-    );
-    
-    // Left bumper for second limelight (opposite side)
-    driverXbox.leftBumper().onTrue(
-    new SequentialCommandGroup(
-        // Run AlignToReefTagRelative with second limelight and engageStage(3) simultaneously
-        new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase, true),
-            new InstantCommand(() -> elevator.engageStage(3))
-        ),
-        new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
-    )
-    );
-    driverXbox.leftTrigger().onTrue(
-    new ParallelCommandGroup(
-      new AlignToReefTagRelative(true, drivebase),
-      new InstantCommand(() -> elevator.engageStage(1))
-    )
-    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
-    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
-);
-    //  operatorXbox.x().whileTrue(new InstantCommand(() -> algae.setIntakeSpeed(AlgaeConstants.INTAKE_IN), algae));
-    // operatorXbox.b().whileTrue(new InstantCommand(() -> algae.setIntakeSpeed(AlgaeConstants.INTAKE_OUT), algae));
-    // operatorXbox.y().whileTrue(new InstantCommand(() -> algae.lowerArm(), algae));
-    // operatorXbox.a().whileTrue(new InstantCommand(() -> algae.raiseArm(), algae));
+      // Right bumper: Manually override intake inward while held (only works if not in stage 0)
+      operatorXbox.rightBumper()
+        .whileTrue(new InstantCommand(() -> {
+          if (elevator.getStage() != 0) {  // Only allow manual control when not in stage 0
+            elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN);
+          }
+        }, elevator))
+        .onFalse(new InstantCommand(() -> {
+          if (elevator.getStage() != 0) {  // Only reset when not in stage 0
+            elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
+          }
+        }, elevator));
+
+      // Left bumper: Manually override intake outward while held (works in any stage)
+      operatorXbox.leftBumper()
+        .whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT), elevator))
+        .onFalse(new InstantCommand(() -> {
+          // When released, restore automatic intake behavior based on stage
+          if (elevator.getStage() == 0) {
+            elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN);  // Auto-intake in stage 0
+          } else {
+            elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP); // Stop in other stages
+          }
+        }, elevator));
+
+      //Hanger Stuff
+      operatorXbox.y().onTrue(new InstantCommand(() -> hanger.setStage(1), hanger));
+      operatorXbox.x().onTrue(new InstantCommand(() -> hanger.setStage(0), hanger));
+      operatorXbox.a().onTrue(new InstantCommand(() -> hanger.setStage(2), hanger));
+
+      //Camera Stuff - Right bumper for original limelight
+      driverXbox.rightBumper().onTrue(
+          new SequentialCommandGroup(
+              // Align with the reef tag using original limelight
+              new ParallelCommandGroup(
+              new AlignToReefTagRelative(true, drivebase, false),
+              new InstantCommand(() -> elevator.engageStage(2))  // Changed from 4 to 2
+              ),
+              // Set intake motor to output
+              new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
+          )
+      );
+      
+      // Left bumper for second limelight (opposite side)
+      driverXbox.leftBumper().onTrue(
+      new SequentialCommandGroup(
+          // Run AlignToReefTagRelative with second limelight and engageStage(2) simultaneously
+          new ParallelCommandGroup(
+              new AlignToReefTagRelative(true, drivebase, true),
+              new InstantCommand(() -> elevator.engageStage(2))  // Changed from 3 to 2
+          ),
+          new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
+      )
+      );
+
+      driverXbox.leftTrigger().onTrue(
+      new ParallelCommandGroup(
+        new AlignToReefTagRelative(true, drivebase),
+        new InstantCommand(() -> elevator.engageStage(1))
+      )
+      .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
+      .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
+      );
     }
-
   }
 
   /**
@@ -277,7 +284,7 @@ operatorXbox.leftBumper()
     return new SequentialCommandGroup(
         new ParallelCommandGroup(
             new AlignToReefTagRelative(true, drivebase, false),
-            new InstantCommand(() -> elevator.engageStage(4))
+            new InstantCommand(() -> elevator.engageStage(2))  // Changed from 4 to 2
         ),
         new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
     );
