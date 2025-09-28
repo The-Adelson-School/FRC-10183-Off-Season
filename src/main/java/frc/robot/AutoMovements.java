@@ -29,7 +29,6 @@ public class AutoMovements {
         aprilTagLayout = layout;
     }
 
-
     private static Pose2d getTagPose(int tagId) {
         var tagPoseOpt = aprilTagLayout.getTagPose(tagId);
         if (tagPoseOpt.isPresent()) {
@@ -37,106 +36,96 @@ public class AutoMovements {
         }
         throw new RuntimeException("No AprilTag found with ID: " + tagId);
     }
-    
 
-    private static Transform2d createCoralOffset(boolean isLeft) {
-        double sideOffset = isLeft ? Constants.FieldMovementConstants.LEFT_SIDE_OFFSET : -Constants.FieldMovementConstants.RIGHT_SIDE_OFFSET;
+    private static Transform2d createLeftOffset() {
         return new Transform2d(
-            new Translation2d(-Constants.FieldMovementConstants.CORAL_OFFSET_DISTANCE, sideOffset),
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, Constants.FieldMovementConstants.LEFT_POSITION_OFFSET), // Left offset with distance
             new Rotation2d(Math.PI) // Face the tag
         );
     }
     
-    private static Transform2d createL1Offset(boolean isLeft) {
-        double sideOffset = isLeft ? Constants.FieldMovementConstants.LEFT_SIDE_OFFSET : -Constants.FieldMovementConstants.RIGHT_SIDE_OFFSET;
+    private static Transform2d createRightOffset() {
         return new Transform2d(
-            new Translation2d(-Constants.FieldMovementConstants.L1_OFFSET_DISTANCE, sideOffset),
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, -Constants.FieldMovementConstants.RIGHT_POSITION_OFFSET), // Right offset with distance
+            new Rotation2d(Math.PI) // Face the tag
+        );
+    }
+    
+    private static Transform2d createAlgaeOffset() {
+        return new Transform2d(
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 0.0), // Centered on tag with distance
             new Rotation2d(Math.PI) // Face the tag
         );
     }
     
     public enum FieldPosition {
         // RED ALLIANCE POSITIONS
-        // Tag 7 positions (Red A,B)
-        RED_A(7, true, createCoralOffset(true)),
-        RED_A_LEFTL1(7, true, createL1Offset(true)),
-        RED_A_RIGHTL1(7, false, createL1Offset(false)),
-        RED_B(7, false, createCoralOffset(false)),
+        // Tag 7 positions (Red A)
+        RED_A_LEFT(7, createLeftOffset()),
+        RED_A_RIGHT(7, createRightOffset()),
+        RED_A_Algae(7, createAlgaeOffset()),
         
-        // Tag 8 positions (Red C,D)
-        RED_C(8, true, createCoralOffset(true)),
-        RED_C_LEFTL1(8, true, createL1Offset(true)),
-        RED_C_RIGHTL1(8, false, createL1Offset(false)),
-        RED_D(8, false, createCoralOffset(false)),
+        // Tag 8 positions (Red C)
+        RED_C_LEFT(8, createLeftOffset()),
+        RED_C_RIGHT(8, createRightOffset()),
+        RED_C_Algae(8, createAlgaeOffset()),
         
-        // Tag 9 positions (Red F,E)
-        RED_F(9, true, createCoralOffset(true)),
-        RED_F_LEFTL1(9, true, createL1Offset(true)),
-        RED_F_RIGHTL1(9, false, createL1Offset(false)),
-        RED_E(9, false, createCoralOffset(false)),
+        // Tag 9 positions (Red F)
+        RED_F_LEFT(9, createLeftOffset()),
+        RED_F_RIGHT(9, createRightOffset()),
+        RED_F_Algae(9, createAlgaeOffset()),
         
-        // Tag 10 positions (Red G,H)
-        RED_G(10, true, createCoralOffset(true)),
-        RED_G_LEFTL1(10, true, createL1Offset(true)),
-        RED_G_RIGHTL1(10, false, createL1Offset(false)),
-        RED_H(10, false, createCoralOffset(false)),
+        // Tag 10 positions (Red G)
+        RED_G_LEFT(10, createLeftOffset()),
+        RED_G_RIGHT(10, createRightOffset()),
+        RED_G_Algae(10, createAlgaeOffset()),
         
-        // Tag 11 positions (Red I,J)
-        RED_I(11, true, createCoralOffset(true)),
-        RED_I_LEFTL1(11, true, createL1Offset(true)),
-        RED_I_RIGHTL1(11, false, createL1Offset(false)),
-        RED_J(11, false, createCoralOffset(false)),
+        // Tag 11 positions (Red I)
+        RED_I_LEFT(11, createLeftOffset()),
+        RED_I_RIGHT(11, createRightOffset()),
+        RED_I_Algae(11, createAlgaeOffset()),
         
-        // Tag 6 positions (Red K,L)
-        RED_K(6, true, createCoralOffset(true)),
-        RED_K_LEFTL1(6, true, createL1Offset(true)),
-        RED_K_RIGHTL1(6, false, createL1Offset(false)),
-        RED_L(6, false, createCoralOffset(false)),
+        // Tag 6 positions (Red K)
+        RED_K_LEFT(6, createLeftOffset()),
+        RED_K_RIGHT(6, createRightOffset()),
+        RED_K_Algae(6, createAlgaeOffset()),
         
         // BLUE ALLIANCE POSITIONS
-        // Tag 18 positions (Blue A,B)
-        BLUE_A(18, true, createCoralOffset(true)),
-        BLUE_A_LEFTL1(18, true, createL1Offset(true)),
-        BLUE_A_RIGHTL1(18, false, createL1Offset(false)),
-        BLUE_B(18, false, createCoralOffset(false)),
+        // Tag 18 positions (Blue A)
+        BLUE_A_LEFT(18, createLeftOffset()),
+        BLUE_A_RIGHT(18, createRightOffset()),
+        BLUE_A_Algae(18, createAlgaeOffset()),
         
-        // Tag 17 positions (Blue C,D)
-        BLUE_C(17, true, createCoralOffset(true)),
-        BLUE_C_LEFTL1(17, true, createL1Offset(true)),
-        BLUE_C_RIGHTL1(17, false, createL1Offset(false)),
-        BLUE_D(17, false, createCoralOffset(false)),
+        // Tag 17 positions (Blue C)
+        BLUE_C_LEFT(17, createLeftOffset()),
+        BLUE_C_RIGHT(17, createRightOffset()),
+        BLUE_C_Algae(17, createAlgaeOffset()),
         
-        // Tag 22 positions (Blue E,F)
-        BLUE_E(22, true, createCoralOffset(true)),
-        BLUE_E_LEFTL1(22, true, createL1Offset(true)),
-        BLUE_E_RIGHTL1(22, false, createL1Offset(false)),
-        BLUE_F(22, false, createCoralOffset(false)),
+        // Tag 22 positions (Blue E)
+        BLUE_E_LEFT(22, createLeftOffset()),
+        BLUE_E_RIGHT(22, createRightOffset()),
+        BLUE_E_Algae(22, createAlgaeOffset()),
         
-        // Tag 21 positions (Blue G,H)
-        BLUE_G(21, true, createCoralOffset(true)),
-        BLUE_G_LEFTL1(21, true, createL1Offset(true)),
-        BLUE_G_RIGHTL1(21, false, createL1Offset(false)),
-        BLUE_H(21, false, createCoralOffset(false)),
+        // Tag 21 positions (Blue G)
+        BLUE_G_LEFT(21, createLeftOffset()),
+        BLUE_G_RIGHT(21, createRightOffset()),
+        BLUE_G_Algae(21, createAlgaeOffset()),
         
-        // Tag 20 positions (Blue J,I)
-        BLUE_J(20, true, createCoralOffset(true)),
-        BLUE_J_LEFTL1(20, true, createL1Offset(true)),
-        BLUE_J_RIGHTL1(20, false, createL1Offset(false)),
-        BLUE_I(20, false, createCoralOffset(false)),
+        // Tag 20 positions (Blue J)
+        BLUE_J_LEFT(20, createLeftOffset()),
+        BLUE_J_RIGHT(20, createRightOffset()),
+        BLUE_J_Algae(20, createAlgaeOffset()),
         
-        // Tag 19 positions (Blue K,L)
-        BLUE_K(19, true, createCoralOffset(true)),
-        BLUE_K_LEFTL1(19, true, createL1Offset(true)),
-        BLUE_K_RIGHTL1(19, false, createL1Offset(false)),
-        BLUE_L(19, false, createCoralOffset(false));
+        // Tag 19 positions (Blue K)
+        BLUE_K_LEFT(19, createLeftOffset()),
+        BLUE_K_RIGHT(19, createRightOffset()),
+        BLUE_K_Algae(19, createAlgaeOffset());
 
         private final int tagId;
-        private final boolean isLeft;
         private final Transform2d offset;
         
-        FieldPosition(int tagId, boolean isLeft, Transform2d offset) {
+        FieldPosition(int tagId, Transform2d offset) {
             this.tagId = tagId;
-            this.isLeft = isLeft;
             this.offset = offset;
         }
         
@@ -160,8 +149,25 @@ public class AutoMovements {
             return tagId;
         }
         
-        public boolean isLeftSide() {
-            return isLeft;
+        /**
+         * Check if this is a left position
+         */
+        public boolean isLeftPosition() {
+            return name().contains("_LEFT");
+        }
+        
+        /**
+         * Check if this is a right position
+         */
+        public boolean isRightPosition() {
+            return name().contains("_RIGHT");
+        }
+        
+        /**
+         * Check if this is an Algae position (coral scoring)
+         */
+        public boolean isAlgaePosition() {
+            return name().contains("_Algae");
         }
     }
     
@@ -223,7 +229,7 @@ public class AutoMovements {
         
         // Create transform to position robot at specified distance and side offset
         Transform2d alignmentOffset = new Transform2d(
-            new Translation2d(-distanceFromTag, sideOffset),
+            new Translation2d(-distanceFromTag, sideOffset), // Distance back from tag with side offset
             new Rotation2d(Math.PI) // Face the tag
         );
         
@@ -231,29 +237,40 @@ public class AutoMovements {
     }
     
     /**
-     * Creates a command to align with any AprilTag at a specified distance and offset
+     * Creates a command to align with any AprilTag at a specified distance
      */
-    public Command alignWithTag(int tagId, double distanceFromTag, double sideOffset) {
-        Pose2d alignmentPose = createTagAlignmentPosition(tagId, distanceFromTag, sideOffset);
+    public Command alignWithTag(int tagId, double distanceFromTag) {
+        Pose2d alignmentPose = createTagAlignmentPosition(tagId, distanceFromTag, 0.0);
         return moveToPosition(alignmentPose);
     }
     
     /**
-     * Creates a command to align with an AprilTag using coral offset
+     * Creates a command to align with an AprilTag on the left side
      */
-    public Command alignWithTagCoral(int tagId, boolean leftSide) {
-        double sideOffset = leftSide ? Constants.FieldMovementConstants.LEFT_SIDE_OFFSET : -Constants.FieldMovementConstants.RIGHT_SIDE_OFFSET;
-        return alignWithTag(tagId, Constants.FieldMovementConstants.CORAL_OFFSET_DISTANCE, sideOffset);
+    public Command alignWithTagLeft(int tagId) {
+        return moveToPosition(createTagAlignmentPosition(tagId, 
+            Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
+            Constants.FieldMovementConstants.LEFT_POSITION_OFFSET));
     }
     
     /**
-     * Creates a command to align with an AprilTag using L1 offset
+     * Creates a command to align with an AprilTag on the right side
      */
-    public Command alignWithTagL1(int tagId, boolean leftSide) {
-        double sideOffset = leftSide ? Constants.FieldMovementConstants.LEFT_SIDE_OFFSET : -Constants.FieldMovementConstants.RIGHT_SIDE_OFFSET;
-        return alignWithTag(tagId, Constants.FieldMovementConstants.L1_OFFSET_DISTANCE, sideOffset);
+    public Command alignWithTagRight(int tagId) {
+        return moveToPosition(createTagAlignmentPosition(tagId, 
+            Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
+            -Constants.FieldMovementConstants.RIGHT_POSITION_OFFSET));
     }
-
+    
+    /**
+     * Creates a command to align with an AprilTag for algae (centered)
+     */
+    public Command alignWithTagAlgae(int tagId) {
+        return moveToPosition(createTagAlignmentPosition(tagId, 
+            Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
+            0.0));
+    }
+    
     /**
      * Creates a command to move the robot to a specific field position
      */
@@ -412,7 +429,7 @@ public class AutoMovements {
     
     public FieldPosition getClosestPosition() {
         Pose2d currentPose = swerveSubsystem.getPose();
-        FieldPosition closest = FieldPosition.RED_A;
+        FieldPosition closest = FieldPosition.RED_A_LEFT;
         double closestDistance = Double.MAX_VALUE;
         
         for (FieldPosition position : FieldPosition.values()) {
@@ -438,10 +455,14 @@ public class AutoMovements {
      * Gets information about a specific AprilTag alignment position
      */
     public String getPositionInfo(FieldPosition position) {
-        return String.format("Position: %s, Tag ID: %d, Side: %s, Pose: (%.2f, %.2f, %.1f°)",
+        String positionType = position.isLeftPosition() ? "Left" : 
+                             position.isRightPosition() ? "Right" :
+                             position.isAlgaePosition() ? "Algae" : "Unknown";
+        return String.format("Position: %s, Tag ID: %d, Type: %s, Distance: %.1fm, Pose: (%.2f, %.2f, %.1f°)",
             position.name(),
             position.getTagId(),
-            position.isLeftSide() ? "Left" : "Right",
+            positionType,
+            Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG,
             position.getPose().getX(),
             position.getPose().getY(),
             position.getPose().getRotation().getDegrees());

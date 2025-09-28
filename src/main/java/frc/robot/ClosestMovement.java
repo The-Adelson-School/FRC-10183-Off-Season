@@ -17,7 +17,37 @@ public class ClosestMovement {
     }
     
     /**
-     * Gets the closest LEFT field position based on current robot location and alliance
+     * Gets the closest algae position based on current robot location and alliance
+     */
+    public FieldPosition getClosestAlgaePosition() {
+        Pose2d currentPose = swerveSubsystem.getPose();
+        boolean isRedAlliance = isRedAlliance();
+        
+        FieldPosition closestAlgae = null;
+        double closestDistance = Double.MAX_VALUE;
+        
+        // Filter positions based on alliance and algae type
+        for (FieldPosition position : FieldPosition.values()) {
+            // Check if position matches our alliance and is an algae position
+            if (isPositionForAlliance(position, isRedAlliance) && position.isAlgaePosition()) {
+                double distance = currentPose.getTranslation().getDistance(position.getTranslation());
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestAlgae = position;
+                }
+            }
+        }
+        
+        // Fallback if no position found
+        if (closestAlgae == null) {
+            closestAlgae = isRedAlliance ? FieldPosition.RED_A_Algae : FieldPosition.BLUE_A_Algae;
+        }
+        
+        return closestAlgae;
+    }
+    
+    /**
+     * Gets the closest left position based on current robot location and alliance
      */
     public FieldPosition getClosestLeftPosition() {
         Pose2d currentPose = swerveSubsystem.getPose();
@@ -26,10 +56,10 @@ public class ClosestMovement {
         FieldPosition closestLeft = null;
         double closestDistance = Double.MAX_VALUE;
         
-        // Filter positions based on alliance and left side
+        // Filter positions based on alliance and left type
         for (FieldPosition position : FieldPosition.values()) {
             // Check if position matches our alliance and is a left position
-            if (isPositionForAlliance(position, isRedAlliance) && position.isLeftSide()) {
+            if (isPositionForAlliance(position, isRedAlliance) && position.isLeftPosition()) {
                 double distance = currentPose.getTranslation().getDistance(position.getTranslation());
                 if (distance < closestDistance) {
                     closestDistance = distance;
@@ -40,14 +70,14 @@ public class ClosestMovement {
         
         // Fallback if no position found
         if (closestLeft == null) {
-            closestLeft = isRedAlliance ? FieldPosition.RED_A : FieldPosition.BLUE_A;
+            closestLeft = isRedAlliance ? FieldPosition.RED_A_LEFT : FieldPosition.BLUE_A_LEFT;
         }
         
         return closestLeft;
     }
     
     /**
-     * Gets the closest RIGHT field position based on current robot location and alliance
+     * Gets the closest right position based on current robot location and alliance
      */
     public FieldPosition getClosestRightPosition() {
         Pose2d currentPose = swerveSubsystem.getPose();
@@ -56,10 +86,10 @@ public class ClosestMovement {
         FieldPosition closestRight = null;
         double closestDistance = Double.MAX_VALUE;
         
-        // Filter positions based on alliance and right side
+        // Filter positions based on alliance and right type
         for (FieldPosition position : FieldPosition.values()) {
             // Check if position matches our alliance and is a right position
-            if (isPositionForAlliance(position, isRedAlliance) && !position.isLeftSide()) {
+            if (isPositionForAlliance(position, isRedAlliance) && position.isRightPosition()) {
                 double distance = currentPose.getTranslation().getDistance(position.getTranslation());
                 if (distance < closestDistance) {
                     closestDistance = distance;
@@ -70,22 +100,14 @@ public class ClosestMovement {
         
         // Fallback if no position found
         if (closestRight == null) {
-            closestRight = isRedAlliance ? FieldPosition.RED_B : FieldPosition.BLUE_B;
+            closestRight = isRedAlliance ? FieldPosition.RED_A_RIGHT : FieldPosition.BLUE_A_RIGHT;
         }
         
         return closestRight;
     }
-    
+
     /**
-     * Command to move to the closest LEFT position
-     */
-    public Command moveToClosestLeftPosition() {
-        return autoMovements.moveToPosition(getClosestLeftPosition())
-            .withName("MoveToClosestLeft");
-    }
-    
-    /**
-     * Command to move to the closest RIGHT position
+     * Command to move to the closest right position
      */
     public Command moveToClosestRightPosition() {
         return autoMovements.moveToPosition(getClosestRightPosition())
@@ -93,25 +115,21 @@ public class ClosestMovement {
     }
     
     /**
-     * Command to move to the closest LEFT L1 position
+     * Command to move to the closest left position  
      */
-    public Command moveToClosestLeftL1Position() {
-        FieldPosition leftPos = getClosestLeftPosition();
-        FieldPosition leftL1Pos = getL1VariantOfPosition(leftPos, true);
-        return autoMovements.moveToPosition(leftL1Pos)
-            .withName("MoveToClosestLeftL1");
+    public Command moveToClosestLeftPosition() {
+        return autoMovements.moveToPosition(getClosestLeftPosition())
+            .withName("MoveToClosestLeft");
     }
     
     /**
-     * Command to move to the closest RIGHT L1 position
+     * Command to move to the closest algae position
      */
-    public Command moveToClosestRightL1Position() {
-        FieldPosition rightPos = getClosestRightPosition();
-        FieldPosition rightL1Pos = getL1VariantOfPosition(rightPos, false);
-        return autoMovements.moveToPosition(rightL1Pos)
-            .withName("MoveToClosestRightL1");
+    public Command moveToClosestAlgaePosition() {
+        return autoMovements.moveToPosition(getClosestAlgaePosition())
+            .withName("MoveToClosestAlgae");
     }
-    
+
     /**
      * Helper method to check if a position belongs to the current alliance
      */
@@ -123,35 +141,7 @@ public class ClosestMovement {
             return positionName.startsWith("BLUE_");
         }
     }
-    
-    /**
-     * Helper method to get the L1 variant of a coral position
-     */
-    private FieldPosition getL1VariantOfPosition(FieldPosition position, boolean isLeft) {
-        String positionName = position.name();
-        
-        // Remove any existing suffix and add L1 suffix
-        if (positionName.contains("_LEFTL1") || positionName.contains("_RIGHTL1")) {
-            // Already an L1 position
-            return position;
-        }
-        
-        // Convert coral position to L1 position
-        String baseName = positionName; // e.g., "RED_A", "BLUE_C"
-        String l1Suffix = isLeft ? "_LEFTL1" : "_RIGHTL1";
-        String l1PositionName = baseName + l1Suffix;
-        
-        // Find the corresponding L1 position
-        for (FieldPosition pos : FieldPosition.values()) {
-            if (pos.name().equals(l1PositionName)) {
-                return pos;
-            }
-        }
-        
-        // Fallback to original position if L1 variant not found
-        return position;
-    }
-    
+  
     /**
      * Checks if the alliance is red
      */
@@ -166,11 +156,13 @@ public class ClosestMovement {
     public String getClosestPositionsInfo() {
         FieldPosition closestLeft = getClosestLeftPosition();
         FieldPosition closestRight = getClosestRightPosition();
+        FieldPosition closestAlgae = getClosestAlgaePosition();
         boolean isRed = isRedAlliance();
         
-        return String.format("Alliance: %s | Closest Left: %s | Closest Right: %s",
+        return String.format("Alliance: %s | Closest Left: %s | Closest Right: %s | Closest Algae: %s",
             isRed ? "RED" : "BLUE",
             closestLeft.name(),
-            closestRight.name());
+            closestRight.name(),
+            closestAlgae.name());
     }
 }

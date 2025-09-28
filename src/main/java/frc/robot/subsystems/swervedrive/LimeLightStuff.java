@@ -1,9 +1,6 @@
 package frc.robot.subsystems.swervedrive;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -21,34 +18,16 @@ import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 public class LimeLightStuff {
     
     /**
-     * Represents a configured Limelight camera with its physical mounting information
+     * Represents a configured Limelight camera
      */
     public static class LimelightCamera {
         private final String name;
-        private final Transform3d robotToCameraTransform;
         
-        public LimelightCamera(String name, Transform3d robotToCameraTransform) {
+        public LimelightCamera(String name) {
             this.name = name;
-            this.robotToCameraTransform = robotToCameraTransform;
-            
-            // Extract pose components from Transform3d for Limelight configuration
-            Translation3d translation = robotToCameraTransform.getTranslation();
-            Rotation3d rotation = robotToCameraTransform.getRotation();
-            
-            // Set the camera pose in Limelight using extracted values
-            LimelightHelpers.setCameraPose_RobotSpace(
-                name, 
-                translation.getX(),                              // forward offset
-                translation.getY(),                              // side offset  
-                translation.getZ(),                              // up offset
-                Units.radiansToDegrees(rotation.getX()),        // roll in degrees
-                Units.radiansToDegrees(rotation.getY()),        // pitch in degrees
-                Units.radiansToDegrees(rotation.getZ())         // yaw in degrees
-            );
         }
         
         public String getName() { return name; }
-        public Transform3d getRobotToCameraTransform() { return robotToCameraTransform; }
     }
     
     private final LimelightCamera rightCamera;
@@ -92,16 +71,9 @@ public class LimeLightStuff {
     public LimeLightStuff(Consumer<VisionMeasurement> poseConsumer) {
         this.poseConsumer = poseConsumer;
         
-        // Configure cameras with Transform3d definitions
-        this.rightCamera = new LimelightCamera(
-            VisionConstants.RIGHT_LIMELIGHT_NAME,
-            VisionConstants.RIGHT_LIMELIGHT_TRANSFORM
-        );
-        
-        this.leftCamera = new LimelightCamera(
-            VisionConstants.LEFT_LIMELIGHT_NAME,
-            VisionConstants.LEFT_LIMELIGHT_TRANSFORM
-        );
+        // Configure cameras with simple names - transforms handled in Limelight interface
+        this.rightCamera = new LimelightCamera(VisionConstants.RIGHT_LIMELIGHT_NAME);
+        this.leftCamera = new LimelightCamera(VisionConstants.LEFT_LIMELIGHT_NAME);
         
         // Enable MegaTag2 mode for better accuracy (if supported)
         configureLimelight(rightCamera.getName());
@@ -123,6 +95,7 @@ public class LimeLightStuff {
         
         // Allow all AprilTags - no ID filtering
         // Both Limelights can now see and use any AprilTag for localization
+        // Transform configuration is handled in the Limelight interface, not here
     }
     
     /**

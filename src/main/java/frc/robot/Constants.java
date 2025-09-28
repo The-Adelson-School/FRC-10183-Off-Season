@@ -52,20 +52,42 @@ public final class Constants
   }
 
   public static class ElevatorConstants{
-    //Elevator Math - TalonFX motors use rotations, not counts
-    // TalonFX integrated encoder: 2048 counts per rotation, but we work in rotations
-    public static final double MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION = 4.0; // 4:1 gear ratio
-    public static final double MAX_EXTENTION_INCHES = 30; // 22.875
+
+    public static final double MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION = 4.0; // 
+    public static final double MAX_EXTENTION_INCHES = 30; 
     public static final double INCHES_PER_ROTATION = 0.28;
     
-    // For compatibility with existing code, convert to "counts" equivalent
+ 
     public static final int COUNTS_PER_ROTATION = (int)(2048 * MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION); // 2048 * 4 = 8192
     public static final double COUNTS_PER_INCH = COUNTS_PER_ROTATION/INCHES_PER_ROTATION;
 
-    //Elevator Set Points (Only 3 stages: 0, 1, 2)
-    public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);      // Stage 0
-    public static final int LEVEL_ONE = (int)(4 * COUNTS_PER_INCH);            // Stage 1 - ~117,000 counts
-    public static final int LEVEL_TWO = (int)(22.275 * COUNTS_PER_INCH);       // Stage 2 - ~652,000 counts
+ 
+    public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);     
+    public static final int LEVEL_ONE = (int)(4 * COUNTS_PER_INCH);            
+    public static final int LEVEL_TWO = (int)(22.275 * COUNTS_PER_INCH);       
+
+
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
+    public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
+    
+    public static final double MOTION_MAGIC_KP = 15.0;     
+    public static final double MOTION_MAGIC_KI = 0.1;     
+    public static final double MOTION_MAGIC_KD = 0.03;    
+    public static final double MOTION_MAGIC_KV = 0.2;     
+    public static final double MOTION_MAGIC_KS = 0.24;    
+    public static final double MOTION_MAGIC_KA = MOTION_MAGIC_CRUISE_VELOCITY / MOTION_MAGIC_ACCELERATION;
+
+    public static final double PEAK_FORWARD_VOLTAGE = 16.0;    
+    public static final double PEAK_REVERSE_VOLTAGE = -10.0;   
+    
+   
+    public static final double ELEVATOR_SUPPLY_CURRENT_LIMIT = 60.0;      
+    public static final boolean ELEVATOR_SUPPLY_LIMIT_ENABLE = true;      
+    public static final double ELEVATOR_STATOR_CURRENT_LIMIT = 120.0;      
+    public static final boolean ELEVATOR_STATOR_LIMIT_ENABLE = true;      
+    
+    // Position tolerance for "at target" detection
+    public static final double ELEVATOR_POSITION_TOLERANCE = 500;  
 
     //Intake Speeds
     public static final double INTAKE_IN = 0.3;
@@ -78,20 +100,18 @@ public final class Constants
     public static final double INTAKE_I = 0.0;
     public static final double INTAKE_D = 0.01;
 
-    public static final double INTAKE_POSITION_TOLERANCE = 0.5; 
-    public static final double INTAKE_ROTATION_DISTANCE = 1.0; 
-  }
-
-  public static class HangerConstants{
-    //Hanger Math
-    public static final int COUNTS_PER_ROTATION = 30618;
-    public static final double DEGREES_PER_ROTATION = 0.49382716049;
-    public static final double COUNTS_PER_DEGREE = (double)(COUNTS_PER_ROTATION/DEGREES_PER_ROTATION);
-  
-    //Hanger Setpoints
-    public static final int STAGE_ZERO = (int)(0 * COUNTS_PER_DEGREE);
-    public static final int STAGE_ONE = -(int)(10* COUNTS_PER_DEGREE);
-    public static final int STAGE_TWO = (int)(18 * COUNTS_PER_DEGREE);
+    public static final double INTAKE_POSITION_TOLERANCE = 0.5;
+    public static final double INTAKE_ROTATION_DISTANCE = 1.0;
+    
+    // Shooter Constants (similar to intake)
+    public static final double SHOOTER_ON = 0.5;         
+    public static final double SHOOTER_STOP = 0.0;     
+    
+    // Current threshold for resistance detection (in amps) - ONLY SHOOTER
+    public static final double SHOOTER_CURRENT_THRESHOLD = 25.0;  
+    
+    // Time threshold for sustained current (in seconds)
+    public static final double CURRENT_DETECTION_TIME = 0.2;      
   }
 
   public static class VisionConstants{
@@ -122,18 +142,8 @@ public final class Constants
     public static final String RIGHT_LIMELIGHT_NAME = "limelight-right";
     public static final String LEFT_LIMELIGHT_NAME = "limelight-left";
     
-    // Camera transforms relative to robot center
-    // Right Limelight - mounted on right side of robot, facing right side of field
-    public static final Transform3d RIGHT_LIMELIGHT_TRANSFORM = new Transform3d(
-        new Translation3d(0.2, -0.25, 0.5),    // 20cm forward, 25cm right, 50cm up
-        new Rotation3d(0, 0, Math.PI/2)         // 90° yaw rotation (facing right)
-    );
-    
-    // Left Limelight - mounted on left side of robot, facing left side of field
-    public static final Transform3d LEFT_LIMELIGHT_TRANSFORM = new Transform3d(
-        new Translation3d(0.2, 0.25, 0.5),     // 20cm forward, 25cm left, 50cm up
-        new Rotation3d(0, 0, -Math.PI/2)        // -90° yaw rotation (facing left)
-    );
+    // Transform configuration is handled in the Limelight interface, not in code
+    // Remove Transform3d constants since they're configured externally
     
     // Vision measurement acceptance thresholds
     public static final double MAX_POSE_AMBIGUITY = 0.3;              // Max ambiguity to accept pose
@@ -196,10 +206,9 @@ public final class Constants
     public static final double MAX_AUTO_TRANSLATION_SPEED = 3.0;  // m/s
     public static final double MAX_AUTO_ROTATION_SPEED = Math.PI; // rad/s
     
-    // AprilTag alignment offsets
-    public static final double CORAL_OFFSET_DISTANCE = 1.0;       // Distance away from tag for coral alignment (meters)
-    public static final double L1_OFFSET_DISTANCE = 0.8;          // Distance away from tag for L1 alignment (meters)
-    public static final double LEFT_SIDE_OFFSET = 0.5;            // Left side offset from tag center (meters)
-    public static final double RIGHT_SIDE_OFFSET = 0.5;           // Right side offset from tag center (meters)
+    // Position offsets from AprilTags
+    public static final double POSITION_DISTANCE_FROM_TAG = 1.5;      // Distance back from tag for all positions (meters)
+    public static final double LEFT_POSITION_OFFSET = 0.6;           // How far left of tag center for LEFT positions (meters)
+    public static final double RIGHT_POSITION_OFFSET = 0.6;          // How far right of tag center for RIGHT positions (meters)
   }
 }

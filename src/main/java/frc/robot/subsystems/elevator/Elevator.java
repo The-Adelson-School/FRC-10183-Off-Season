@@ -1,10 +1,11 @@
 package frc.robot.subsystems.elevator;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.NeutralModeValue;
+import frc.utility.LazyCANSparkMax;
 import frc.robot.Constants;
 import frc.robot.Constants.ElevatorConstants;
+
+import com.revrobotics.spark.SparkLowLevel;
 
 public class Elevator extends SubsystemBase {
     //Elevator Math
@@ -19,23 +20,14 @@ public class Elevator extends SubsystemBase {
     public static final int LEVEL_TWO = 0;         // Stage 2 - change when actual determined
     
     int stage = 0;
-    TalonFX elevMotor = new TalonFX(6);
-    TalonFX intakeMotor = new TalonFX(7);
-    TalonFX intake2Motor = new TalonFX(8);
-    TalonFX intake3Motor = new TalonFX(9);
-    TalonFX intake4Motor = new TalonFX(10);
-
-    public Elevator() {
-        // Configure all motors for brake mode
-        elevMotor.setNeutralMode(NeutralModeValue.Brake);
-        intakeMotor.setNeutralMode(NeutralModeValue.Brake);
-        intake2Motor.setNeutralMode(NeutralModeValue.Brake);
-        intake3Motor.setNeutralMode(NeutralModeValue.Brake);
-        intake4Motor.setNeutralMode(NeutralModeValue.Brake);
-    }
+    LazyCANSparkMax elevMotor = new LazyCANSparkMax(6, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intakeMotor = new LazyCANSparkMax(7, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake2Motor = new LazyCANSparkMax(8, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake3Motor = new LazyCANSparkMax(9, SparkLowLevel.MotorType.kBrushless);
+    LazyCANSparkMax intake4Motor = new LazyCANSparkMax(10, SparkLowLevel.MotorType.kBrushless);
 
     private void goToHeight(int elevSetpoint){
-        elevMotor.setPosition(elevSetpoint);
+        elevMotor.getEncoder().setPosition(elevSetpoint);
     }
 
     private void setIntakeSpeed(double speed){

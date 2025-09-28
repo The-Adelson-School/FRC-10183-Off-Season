@@ -22,12 +22,13 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ElevatorConstants;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.commands.IncreaseCommand;
+import frc.robot.commands.DecreaseCommand;
 import frc.robot.subsystems.elevator.AutoAlignWrapper;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
-import frc.robot.subsystems.hanger.HangerSubsystem;
 import frc.robot.subsystems.AlignToReefTagRelative;
-import frc.robot.AutoMovements;
+import frc.robot.AutoMovements; // Use the main AutoMovements class
 import java.io.File;
 import swervelib.SwerveInputStream;
 import com.pathplanner.lib.auto.NamedCommands;
@@ -49,11 +50,13 @@ public class RobotContainer
   // The robot's subsystems and commands are defined here...
   private final SwerveSubsystem       drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
                                                                                 "swerve"));
-  private final ElevatorSubsystem elevator = new ElevatorSubsystem(6, 7, 8, 8, 8);
-  private final HangerSubsystem hanger = new HangerSubsystem(9);
-  private final AutoMovements autoMovements = new AutoMovements(drivebase);
+  private final ElevatorSubsystem elevator = new ElevatorSubsystem(6, 7, 8, 9, 0); // Leader=6, Follower=7, Intake=8, Shooter=9
+  private final AutoMovements autoMovements = new AutoMovements(drivebase); // Use main AutoMovements class
   private final ClosestMovement closestMovement = new ClosestMovement(autoMovements, drivebase);
   
+  // Create command instances with proper dependency injection
+  private final IncreaseCommand increaseCommand = new IncreaseCommand(elevator);
+  private final DecreaseCommand decreaseCommand = new DecreaseCommand(elevator);
   
 
   /**
@@ -114,7 +117,9 @@ public class RobotContainer
     // Configure the trigger bindings
     configureBindings();
     DriverStation.silenceJoystickConnectionWarning(true);
-    NamedCommands.registerCommand("Intake Out", new InstantCommand(() -> elevator.autonomousCommand()));
+    
+    // Use the proper non-blocking autonomous command
+    NamedCommands.registerCommand("Intake Out", elevator.createAutonomousCommand());
     NamedCommands.registerCommand("test", Commands.print("I EXIST!"));
     NamedCommands.registerCommand("ReefTagIntake", reefTagIntakeSequence());
     NamedCommands.registerCommand("TestCommand", new InstantCommand(() -> System.out.println("Test!")));
@@ -195,9 +200,9 @@ public class RobotContainer
       driverXbox.back().whileTrue(Commands.none());
       driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
 
-      //Operator Bindings
-      operatorXbox.povUp().onTrue(new InstantCommand(() -> elevator.increaseStage(), elevator));
-      operatorXbox.povDown().onTrue(new InstantCommand(() -> elevator.decreaseStage(), elevator));
+      //Operator Bindings - Use proper commands with dependency injection
+      operatorXbox.povUp().onTrue(increaseCommand);
+      operatorXbox.povDown().onTrue(decreaseCommand);
 
       // Right bumper: Manually override intake inward while held (only works if not in stage 0)
       operatorXbox.rightBumper()
@@ -224,10 +229,20 @@ public class RobotContainer
           }
         }, elevator));
 
-      //Hanger Stuff
-      operatorXbox.y().onTrue(new InstantCommand(() -> hanger.setStage(1), hanger));
-      operatorXbox.x().onTrue(new InstantCommand(() -> hanger.setStage(0), hanger));
-      operatorXbox.a().onTrue(new InstantCommand(() -> hanger.setStage(2), hanger));
+      // Add manual shooter control (X button for operator)
+      operatorXbox.x()
+        .whileTrue(new InstantCommand(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON), elevator))
+        .onFalse(new InstantCommand(() -> {
+          // When released, restore automatic shooter behavior based on stage
+          if (elevator.getStage() == 0) {
+            elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON);  // Auto-shooter in stage 0
+          } else {
+            elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP); // Stop in other stages
+          }
+        }, elevator));
+
+      // Add resistance reset button (B button for operator)
+      operatorXbox.b().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
 
       //Camera Stuff - Right bumper for original limelight
       driverXbox.rightBumper().onTrue(
