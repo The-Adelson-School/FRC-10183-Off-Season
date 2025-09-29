@@ -54,8 +54,8 @@ public final class Constants
   public static class ElevatorConstants{
 
     public static final double MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION = 4.0; // 
-    public static final double MAX_EXTENTION_INCHES = 30; 
-    public static final double INCHES_PER_ROTATION = 0.28;
+    public static final double MAX_EXTENTION_INCHES = 34.5; 
+    public static final double INCHES_PER_ROTATION = 1.375;
     
  
     public static final int COUNTS_PER_ROTATION = (int)(2048 * MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION); // 2048 * 4 = 8192
@@ -64,7 +64,8 @@ public final class Constants
  
     public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);     
     public static final int LEVEL_ONE = (int)(4 * COUNTS_PER_INCH);            
-    public static final int LEVEL_TWO = (int)(22.275 * COUNTS_PER_INCH);       
+    public static final int LEVEL_TWO = (int)(22.275 * COUNTS_PER_INCH);
+    // Removed LEVEL_THREE since there are only 3 stages (0, 1, 2)
 
 
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
@@ -90,9 +91,9 @@ public final class Constants
     public static final double ELEVATOR_POSITION_TOLERANCE = 500;  
 
     //Intake Speeds
-    public static final double INTAKE_IN = 0.3;
+    public static final double INTAKE_IN = 1;
     public static final double INTAKE_STOP = 0.0;
-    public static final double INTAKE_OUT = -0.95;
+    public static final double INTAKE_OUT = -1;
 
     public static final double INTAKE_SPEED_MS = 450; //milliseconds to run intake motor
 
@@ -104,14 +105,17 @@ public final class Constants
     public static final double INTAKE_ROTATION_DISTANCE = 1.0;
     
     // Shooter Constants (similar to intake)
-    public static final double SHOOTER_ON = 0.5;         
+    public static final double SHOOTER_ON = 1;         
     public static final double SHOOTER_STOP = 0.0;     
     
     // Current threshold for resistance detection (in amps) - ONLY SHOOTER
     public static final double SHOOTER_CURRENT_THRESHOLD = 25.0;  
     
     // Time threshold for sustained current (in seconds)
-    public static final double CURRENT_DETECTION_TIME = 0.2;      
+    public static final double CURRENT_DETECTION_TIME = 0;      
+    
+    // Shooter timing for automated sequences
+    public static final double SHOOTER_AUTO_RUN_TIME = 0.5;      // Time in seconds to run shooter in automated sequences
   }
 
   public static class VisionConstants{

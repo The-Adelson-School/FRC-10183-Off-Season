@@ -151,11 +151,11 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
     
     public void setShooterSpeed(double speed) {
-        // Don't allow shooter to run if resistance detected
-        if (!shooterResistanceDetected) {
-            shooterMotor.set(speed);
-        } else {
+        // Only check resistance if in stage 0, otherwise run normally
+        if (stage == 0 && shooterResistanceDetected) {
             shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
+        } else {
+            shooterMotor.set(speed);
         }
     }
 
@@ -178,11 +178,15 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
     
     public void engageStage(int targetStage) {
+        int previousStage = stage;
         stage = Math.max(0, Math.min(2, targetStage)); // Clamp to 0-2 range
         SmartDashboard.putNumber("Stage", stage);
         
-        // Reset resistance detection when changing stages
-        resetResistanceDetection();
+        // Reset resistance detection when leaving stage 0
+        if (previousStage == 0 && stage != 0) {
+            resetResistanceDetection();
+            System.out.println("Left stage 0 - resistance detection disabled");
+        }
         
         if (stage == 0) {
             goToHeight(ElevatorConstants.STOWED_LEVEL);
@@ -239,7 +243,7 @@ public class ElevatorSubsystem extends SubsystemBase {
             Commands.runOnce(() -> setIntakeSpeed(ElevatorConstants.INTAKE_OUT)),
             // Move to stage 0
             Commands.runOnce(() -> engageStage(0)),
-            // Wait for elevator to reach position
+            // Wair for elevator to reach position
             Commands.waitUntil(() -> isElevatorAtTarget(ElevatorConstants.STOWED_LEVEL)),
             // Wait another 1.5 seconds
             Commands.waitSeconds(1.5)
@@ -248,14 +252,17 @@ public class ElevatorSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Update current detection first
-        updateCurrentDetection();
-        
-        // Handle automatic shutoff if SHOOTER resistance detected
-        if (shooterResistanceDetected) {
-            shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
-            intakeMotor.set(ElevatorConstants.INTAKE_STOP);  // Intake stops when SHOOTER has resistance
+        // Only update current detection and auto-stop when in stage 0
+        if (stage == 0) {
+            updateCurrentDetection();
+            
+            // Handle automatic shutoff if SHOOTER resistance detected (ONLY in stage 0)
+            if (shooterResistanceDetected) {
+                shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
+                intakeMotor.set(ElevatorConstants.INTAKE_STOP);  // Intake stops when SHOOTER has resistance
+            }
         }
+        // In stages 1, 2, 3: No resistance detection, no auto-stopping
         
         // Add telemetry for debugging - monitor all motors
         SmartDashboard.putNumber("Elevator Leader Position", elevMotorLeader.getPosition().getValueAsDouble());
@@ -282,9 +289,10 @@ public class ElevatorSubsystem extends SubsystemBase {
         SmartDashboard.putBoolean("Elevator Leader Current Warning", leaderCurrent > ElevatorConstants.ELEVATOR_SUPPLY_CURRENT_LIMIT * 0.8);
         SmartDashboard.putBoolean("Elevator Follower Current Warning", followerCurrent > ElevatorConstants.ELEVATOR_SUPPLY_CURRENT_LIMIT * 0.8);
         
-        // Resistance detection status - ONLY SHOOTER
-        SmartDashboard.putBoolean("Shooter Resistance Detected", shooterResistanceDetected);
+        // Resistance detection status - ONLY ACTIVE IN STAGE 0
+        SmartDashboard.putBoolean("Shooter Resistance Detected", shooterResistanceDetected && stage == 0);
         SmartDashboard.putBoolean("Shooter Above Threshold", shooterCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD);
+        SmartDashboard.putBoolean("Resistance Detection Active", stage == 0);
         SmartDashboard.putNumber("Intake Current (Info Only)", intakeCurrent);
         
         // Motion Magic status
@@ -375,9 +383,14 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
     
     /**
-     * Check for current-based resistance detection - ONLY SHOOTER
+     * Check for current-based resistance detection - ONLY IN STAGE 0
      */
     private void updateCurrentDetection() {
+        // This method should only be called when in stage 0
+        if (stage != 0) {
+            return; // Safety check - don't run resistance detection outside stage 0
+        }
+        
         double currentTime = Timer.getFPGATimestamp();
         
         // Check ONLY shooter current - intake current is ignored
@@ -387,7 +400,7 @@ public class ElevatorSubsystem extends SubsystemBase {
                 shooterHighCurrentStartTime = currentTime;
             } else if (currentTime - shooterHighCurrentStartTime > ElevatorConstants.CURRENT_DETECTION_TIME) {
                 if (!shooterResistanceDetected) {
-                    System.out.println("SHOOTER RESISTANCE DETECTED - Auto-stopping BOTH shooter and intake");
+                    System.out.println("SHOOTER RESISTANCE DETECTED IN STAGE 0 - Auto-stopping BOTH shooter and intake");
                     shooterResistanceDetected = true;
                 }
             }
@@ -402,7 +415,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     public void resetResistanceDetection() {
         shooterResistanceDetected = false;
         shooterHighCurrentStartTime = -1;
-        System.out.println("Resistance detection reset");
+        System.out.println("Resistance detection reset - stage: " + stage);
     }
     
     /**

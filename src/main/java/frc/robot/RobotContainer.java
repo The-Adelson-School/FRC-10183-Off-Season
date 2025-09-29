@@ -198,7 +198,80 @@ public class RobotContainer
                               );
       driverXbox.start().whileTrue(Commands.none());
       driverXbox.back().whileTrue(Commands.none());
-      driverXbox.leftBumper().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
+
+      // NEW AUTOMATED SEQUENCES FOR TRIGGERS AND BUMPERS
+      
+      // Left Trigger: Move to closest LEFT position → Stage 2 → Shooter ON for set time
+      driverXbox.leftTrigger().onTrue(
+        new SequentialCommandGroup(
+          // Move to closest left position
+          closestMovement.moveToClosestLeftPosition(),
+          // Move elevator to stage 2 and wait for it to reach position
+          new ParallelCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(2)),
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
+          ),
+          // Turn on shooter for specified time
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
+          // Turn off shooter
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+        ).withName("LeftTrigger_LeftPos_Stage2_Shooter")
+      );
+      
+      // Left Bumper: Move to closest LEFT position → Stage 1 → Shooter ON for set time
+      driverXbox.leftBumper().onTrue(
+        new SequentialCommandGroup(
+          // Move to closest left position
+          closestMovement.moveToClosestLeftPosition(),
+          // Move elevator to stage 1 and wait for it to reach position
+          new ParallelCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(1)),
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
+          ),
+          // Turn on shooter for specified time
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
+          // Turn off shooter
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+        ).withName("LeftBumper_LeftPos_Stage1_Shooter")
+      );
+      
+      // Right Trigger: Move to closest RIGHT position → Stage 2 → Shooter ON for set time
+      driverXbox.rightTrigger().onTrue(
+        new SequentialCommandGroup(
+          // Move to closest right position
+          closestMovement.moveToClosestRightPosition(),
+          // Move elevator to stage 2 and wait for it to reach position
+          new ParallelCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(2)),
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
+          ),
+          // Turn on shooter for specified time
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
+          // Turn off shooter
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+        ).withName("RightTrigger_RightPos_Stage2_Shooter")
+      );
+      
+      // Right Bumper: Move to closest RIGHT position → Stage 1 → Shooter ON for set time
+      driverXbox.rightBumper().onTrue(
+        new SequentialCommandGroup(
+          // Move to closest right position
+          closestMovement.moveToClosestRightPosition(),
+          // Move elevator to stage 1 and wait for it to reach position
+          new ParallelCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(1)),
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
+          ),
+          // Turn on shooter for specified time
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
+          // Turn off shooter
+          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+        ).withName("RightBumper_RightPos_Stage1_Shooter")
+      );
 
       //Operator Bindings - Use proper commands with dependency injection
       operatorXbox.povUp().onTrue(increaseCommand);
@@ -244,39 +317,8 @@ public class RobotContainer
       // Add resistance reset button (B button for operator)
       operatorXbox.b().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
 
-      //Camera Stuff - Right bumper for original limelight
-      driverXbox.rightBumper().onTrue(
-          new SequentialCommandGroup(
-              // Align with the reef tag using original limelight
-              new ParallelCommandGroup(
-              new AlignToReefTagRelative(true, drivebase, false),
-              new InstantCommand(() -> elevator.engageStage(2))  // Changed from 4 to 2
-              ),
-              // Set intake motor to output
-              new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
-          )
-      );
-      
-      // Left bumper for second limelight (opposite side)
-      driverXbox.leftBumper().onTrue(
-      new SequentialCommandGroup(
-          // Run AlignToReefTagRelative with second limelight and engageStage(2) simultaneously
-          new ParallelCommandGroup(
-              new AlignToReefTagRelative(true, drivebase, true),
-              new InstantCommand(() -> elevator.engageStage(2))  // Changed from 3 to 2
-          ),
-          new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
-      )
-      );
-
-      driverXbox.leftTrigger().onTrue(
-      new ParallelCommandGroup(
-        new AlignToReefTagRelative(true, drivebase),
-        new InstantCommand(() -> elevator.engageStage(1))
-      )
-      .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
-      .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_IN)))
-      );
+      // REMOVE OLD CAMERA BINDINGS since they conflict with new trigger/bumper sequences
+      // The old camera sequences used leftBumper and rightBumper which are now used for the new automated sequences
     }
   }
 
