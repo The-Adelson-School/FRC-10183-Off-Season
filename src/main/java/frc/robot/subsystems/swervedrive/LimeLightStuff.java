@@ -150,38 +150,60 @@ public class LimeLightStuff {
     
     /**
      * Updates robot orientation for MegaTag2 (call this every loop with current robot state)
+     * NOTE: This ONLY sends robot orientation TO the Limelight for better pose estimation.
+     * MegaTag does NOT send gyro measurements back to odometry - only vision pose estimates.
+     * 
+     * @param yawRadians Robot yaw angle in radians
+     * @param yawRateRadPerSec Robot angular velocity in radians per second
      */
-    public void updateRobotOrientation(double yawDegrees) {
+    public void updateRobotOrientation(double yawRadians, double yawRateRadPerSec) {
         if (VisionConstants.ENABLE_MEGATAG2) {
+            // Convert radians to degrees for Limelight (Limelight expects degrees)
+            double yawDegrees = Math.toDegrees(yawRadians);
+            double yawRateDegPerSec = Math.toDegrees(yawRateRadPerSec);
+            
             // Debug output
-            SmartDashboard.putNumber("Vision Yaw Input", yawDegrees);
+            SmartDashboard.putNumber("Vision Yaw Input (rad)", yawRadians);
+            SmartDashboard.putNumber("Vision Yaw Input (deg)", yawDegrees);
+            SmartDashboard.putNumber("Vision Yaw Rate Input (rad/s)", yawRateRadPerSec);
+            SmartDashboard.putNumber("Vision Yaw Rate Input (deg/s)", yawRateDegPerSec);
             SmartDashboard.putBoolean("MegaTag2 Enabled", true);
             
+            // IMPORTANT: This sends robot orientation TO the Limelight to help with pose estimation
+            // The Limelight uses this data internally but does NOT send gyro data back to our odometry
+            // Only vision-based pose estimates are sent back via getBotPoseEstimate_wpi*()
             LimelightHelpers.SetRobotOrientation(
                 rightCamera.getName(), 
-                yawDegrees, 
-                0.0,    
-                0.0,   
-                0.0,    
-                0.0,    
-                0.0   
+                yawDegrees,          // Convert to degrees for Limelight
+                yawRateDegPerSec,    // Convert to degrees per second for Limelight
+                0.0,   // pitch
+                0.0,   // pitch rate
+                0.0,   // roll
+                0.0    // roll rate
             );
             LimelightHelpers.SetRobotOrientation(
                 leftCamera.getName(), 
-                yawDegrees, 
-                0.0,    
-                0.0,   
-                0.0,    
-                0.0,    
-                0.0   
+                yawDegrees,          // Convert to degrees for Limelight
+                yawRateDegPerSec,    // Convert to degrees per second for Limelight
+                0.0,   // pitch
+                0.0,   // pitch rate
+                0.0,   // roll
+                0.0    // roll rate
             );
             
-        
         } else {
             SmartDashboard.putBoolean("MegaTag2 Enabled", false);
         }
     }
-
+    
+    /**
+     * Overload for backward compatibility - accepts degrees and converts to radians
+     * @deprecated Use updateRobotOrientation(double yawRadians, double yawRateRadPerSec) instead
+     */
+    @Deprecated
+    public void updateRobotOrientation(double yawDegrees) {
+        updateRobotOrientation(Math.toRadians(yawDegrees), 0.0);
+    }
 
     public void processVisionMeasurements() {
         // Process each camera
@@ -198,6 +220,9 @@ public class LimeLightStuff {
     private void processCameraMeasurements(LimelightCamera camera) {
         try {
             // Get alliance-aware pose estimate
+            // IMPORTANT: This gets vision-based pose estimates from MegaTag, NOT gyro data
+            // MegaTag uses our robot orientation (sent above) to improve its pose calculation,
+            // but only returns vision-derived poses, not IMU/gyro measurements
             PoseEstimate poseEstimate = getAllianceAwarePoseEstimate(camera.getName());
             
             if (poseEstimate == null || poseEstimate.pose == null) {
@@ -283,6 +308,8 @@ public class LimeLightStuff {
                 );
                 
                 // Send measurement to odometry - THIS IS THE KEY INTEGRATION POINT
+                // NOTE: This sends VISION-BASED pose estimates to odometry, NOT gyro data
+                // The pose comes from AprilTag detection enhanced by MegaTag processing
                 poseConsumer.accept(measurement);
                 
                 // Update statistics
@@ -300,7 +327,7 @@ public class LimeLightStuff {
                 
                 // Log successful measurement processing (reduced frequency to avoid spam)
                 if ((System.currentTimeMillis() % 1000) < 50) { // Only log every ~1 second
-                    System.out.println(String.format("Vision Update: %s (%s) - Tags: %d, Confidence: %.3f, Distance: %.2fm, TS: %.3f", 
+                    System.out.println(String.format("Vision Update: %s (%s) - Tags: %d, Confidence: %.3f, Distance: %.3fm, TS: %.3f", 
                         camera.getName(), isRedAlliance() ? "RED" : "BLUE", poseEstimate.tagCount, confidence, poseEstimate.avgTagDist, poseEstimate.timestampSeconds));
                 }
                     
@@ -327,13 +354,13 @@ public class LimeLightStuff {
     }
     
     /**
-     * Check if we're on red alliance
+     * Public method to check if we're on red alliance (for other classes)
      */
-    private boolean isRedAlliance() {
+    public boolean isRedAlliance() {
         var alliance = DriverStation.getAlliance();
         return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
     }
-    
+
     /**
      * Validate if a pose estimate should be accepted
      */

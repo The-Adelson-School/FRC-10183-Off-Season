@@ -205,8 +205,9 @@ public class SwerveSubsystem extends SubsystemBase
       swerveDrive.updateOdometry();
   
     if (visionSystem != null) {
-      double yawDegrees = getHeading().getDegrees();
-      visionSystem.updateRobotOrientation(yawDegrees);
+      double yawRadians = getHeading().getRadians();
+      double yawRateRadPerSec = getRobotVelocity().omegaRadiansPerSecond;
+      visionSystem.updateRobotOrientation(yawRadians, yawRateRadPerSec);
       visionSystem.processVisionMeasurements();
     }
 

@@ -27,10 +27,10 @@ import frc.robot.subsystems.elevator.AutoAlignWrapper;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import frc.robot.subsystems.AlignToReefTagRelative;
-import frc.robot.AutoMovements; // Use the main AutoMovements class
 import java.io.File;
 import swervelib.SwerveInputStream;
 import com.pathplanner.lib.auto.NamedCommands;
+import frc.robot.subsystems.AlignToReefTagPose;
 
   // Other setup code...
 
@@ -50,9 +50,6 @@ public class RobotContainer
   private final SwerveSubsystem       drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
                                                                                 "swerve"));
   private final ElevatorSubsystem elevator = new ElevatorSubsystem(3, 5, 1, 4, 0); // Leader=3, Follower=5, Intake=1, Shooter=4
-  private final AutoMovements autoMovements = new AutoMovements(drivebase); // Use main AutoMovements class
-  private final ClosestMovement closestMovement = new ClosestMovement(autoMovements, drivebase);
-  
   // Create command instances with proper dependency injection
   private final IncreaseCommand increaseCommand = new IncreaseCommand(elevator);
   private final DecreaseCommand decreaseCommand = new DecreaseCommand(elevator);
@@ -191,8 +188,7 @@ public class RobotContainer
       
       // Driver controls (moved from operator)
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-      driverXbox.x().onTrue(autoMovements.moveToPosition(AutoMovements.FieldPosition.BLUE_A_LEFT)); // Go to Tag 7 Left
-      driverXbox.y().onTrue(closestMovement.moveToClosestLeftPosition());
+      driverXbox.x().onTrue(new AlignToReefTagRelative(true, drivebase)); // Use relative alignment instead of odometry
       
       // B button now controls shooter override in stages 1 and 2 with full power (30A limit)
       driverXbox.b()
@@ -227,7 +223,7 @@ public class RobotContainer
       // Automated sequences on triggers
       driverXbox.leftTrigger().onTrue(
         new SequentialCommandGroup(
-          closestMovement.moveToClosestLeftPosition(),
+        
           new ParallelCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(2)),
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
@@ -238,18 +234,7 @@ public class RobotContainer
         ).withName("LeftTrigger_LeftPos_Stage2_Shooter")
       );
       
-      driverXbox.rightTrigger().onTrue(
-        new SequentialCommandGroup(
-          closestMovement.moveToClosestRightPosition(),
-          new ParallelCommandGroup(
-            Commands.runOnce(() -> elevator.engageStage(2)),
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
-          ),
-          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
-          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
-        ).withName("RightTrigger_RightPos_Stage2_Shooter")
-      );
+      
 
       // Unused buttons for future expansion
       driverXbox.back().whileTrue(Commands.none());
@@ -283,8 +268,8 @@ public class RobotContainer
   public Command reefTagIntakeSequence() {
     return new SequentialCommandGroup(
         new ParallelCommandGroup(
-            new AlignToReefTagRelative(true, drivebase, false),
-            new InstantCommand(() -> elevator.engageStage(2))  // Changed from 4 to 2
+            new AlignToReefTagPose(true, drivebase), // New pose-based alignment
+            new InstantCommand(() -> elevator.engageStage(2))
         ),
         new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
     );
@@ -292,10 +277,10 @@ public class RobotContainer
 
   public Command reefTagIntakeStage1Command() {
     return new ParallelCommandGroup(
-        new AlignToReefTagRelative(true, drivebase, false),
+        new AlignToReefTagPose(true, drivebase), // New pose-based alignment
         new InstantCommand(() -> elevator.engageStage(1))
     )
-    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT)));  // Only intake out available
+    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT)));
   }
 
 }

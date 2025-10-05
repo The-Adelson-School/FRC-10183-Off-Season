@@ -78,9 +78,9 @@ public final class Constants
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 2;
-    public static final double Y_REEF_ALIGNMENT_P = 2;
-    public static final double ROT_REEF_ALIGNMENT_P = 0.1;
+    public static final double X_REEF_ALIGNMENT_P = 1;
+    public static final double Y_REEF_ALIGNMENT_P = 1;
+    public static final double ROT_REEF_ALIGNMENT_P = 0.01;
   
     public static final double ROT_SETPOINT_REEF_ALIGNMENT = 0.2;
     public static final double ROT_TOLERANCE_REEF_ALIGNMENT = 3;
@@ -132,15 +132,15 @@ public final class Constants
   }
 
   public static class FieldMovementConstants {
-    public static final double X_TRANSLATION_P = 1;
+    public static final double X_TRANSLATION_P = 0.1;
     public static final double X_TRANSLATION_I = 0.0;
     public static final double X_TRANSLATION_D = 0;
     
-    public static final double Y_TRANSLATION_P = 1;
+    public static final double Y_TRANSLATION_P = 0.1;
     public static final double Y_TRANSLATION_I = 0.0;
     public static final double Y_TRANSLATION_D = 0;
     
-    public static final double ROTATION_P = 0.6;
+    public static final double ROTATION_P = 0.2;
     public static final double ROTATION_I = 0.0;
     public static final double ROTATION_D = 0.0;
     
