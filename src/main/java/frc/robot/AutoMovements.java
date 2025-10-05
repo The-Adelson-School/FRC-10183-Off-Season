@@ -10,12 +10,12 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 public class AutoMovements {
     
-    // Get the field layout for AprilTag positions
     private static final AprilTagFieldLayout aprilTagLayout;
     
     static {
@@ -39,84 +39,70 @@ public class AutoMovements {
 
     private static Transform2d createLeftOffset() {
         return new Transform2d(
-            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, Constants.FieldMovementConstants.LEFT_POSITION_OFFSET), // Left offset with distance
-            new Rotation2d(Math.PI) // Face the tag
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, Constants.FieldMovementConstants.LEFT_POSITION_OFFSET),
+            new Rotation2d(Math.PI)
         );
     }
     
     private static Transform2d createRightOffset() {
         return new Transform2d(
-            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, -Constants.FieldMovementConstants.RIGHT_POSITION_OFFSET), // Right offset with distance
-            new Rotation2d(Math.PI) // Face the tag
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, -Constants.FieldMovementConstants.RIGHT_POSITION_OFFSET),
+            new Rotation2d(Math.PI)
         );
     }
     
     private static Transform2d createAlgaeOffset() {
         return new Transform2d(
-            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 0.0), // Centered on tag with distance
-            new Rotation2d(Math.PI) // Face the tag
+            new Translation2d(-Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 0.0),
+            new Rotation2d(Math.PI)
         );
     }
     
     public enum FieldPosition {
-        // RED ALLIANCE POSITIONS
-        // Tag 7 positions (Red A)
         RED_A_LEFT(7, createLeftOffset()),
         RED_A_RIGHT(7, createRightOffset()),
         RED_A_Algae(7, createAlgaeOffset()),
         
-        // Tag 8 positions (Red C)
         RED_C_LEFT(8, createLeftOffset()),
         RED_C_RIGHT(8, createRightOffset()),
         RED_C_Algae(8, createAlgaeOffset()),
         
-        // Tag 9 positions (Red F)
         RED_F_LEFT(9, createLeftOffset()),
         RED_F_RIGHT(9, createRightOffset()),
         RED_F_Algae(9, createAlgaeOffset()),
         
-        // Tag 10 positions (Red G)
         RED_G_LEFT(10, createLeftOffset()),
         RED_G_RIGHT(10, createRightOffset()),
         RED_G_Algae(10, createAlgaeOffset()),
         
-        // Tag 11 positions (Red I)
         RED_I_LEFT(11, createLeftOffset()),
         RED_I_RIGHT(11, createRightOffset()),
         RED_I_Algae(11, createAlgaeOffset()),
         
-        // Tag 6 positions (Red K)
         RED_K_LEFT(6, createLeftOffset()),
         RED_K_RIGHT(6, createRightOffset()),
         RED_K_Algae(6, createAlgaeOffset()),
         
-        // BLUE ALLIANCE POSITIONS
-        // Tag 18 positions (Blue A)
         BLUE_A_LEFT(18, createLeftOffset()),
         BLUE_A_RIGHT(18, createRightOffset()),
         BLUE_A_Algae(18, createAlgaeOffset()),
         
-        // Tag 17 positions (Blue C)
         BLUE_C_LEFT(17, createLeftOffset()),
         BLUE_C_RIGHT(17, createRightOffset()),
         BLUE_C_Algae(17, createAlgaeOffset()),
         
-        // Tag 22 positions (Blue E)
         BLUE_E_LEFT(22, createLeftOffset()),
         BLUE_E_RIGHT(22, createRightOffset()),
         BLUE_E_Algae(22, createAlgaeOffset()),
         
-        // Tag 21 positions (Blue G)
         BLUE_G_LEFT(21, createLeftOffset()),
         BLUE_G_RIGHT(21, createRightOffset()),
         BLUE_G_Algae(21, createAlgaeOffset()),
         
-        // Tag 20 positions (Blue J)
         BLUE_J_LEFT(20, createLeftOffset()),
         BLUE_J_RIGHT(20, createRightOffset()),
         BLUE_J_Algae(20, createAlgaeOffset()),
         
-        // Tag 19 positions (Blue K)
         BLUE_K_LEFT(19, createLeftOffset()),
         BLUE_K_RIGHT(19, createRightOffset()),
         BLUE_K_Algae(19, createAlgaeOffset());
@@ -129,9 +115,6 @@ public class AutoMovements {
             this.offset = offset;
         }
         
-        /**
-         * Get the calculated pose for this position
-         */
         public Pose2d getPose() {
             Pose2d tagPose2d = getTagPose(tagId);
             return tagPose2d.transformBy(offset);
@@ -149,53 +132,49 @@ public class AutoMovements {
             return tagId;
         }
         
-        /**
-         * Check if this is a left position
-         */
         public boolean isLeftPosition() {
             return name().contains("_LEFT");
         }
         
-        /**
-         * Check if this is a right position
-         */
         public boolean isRightPosition() {
             return name().contains("_RIGHT");
         }
         
-        /**
-         * Check if this is an Algae position (coral scoring)
-         */
         public boolean isAlgaePosition() {
             return name().contains("_Algae");
         }
     }
     
-    // PID Controllers for movement
     private final PIDController xController;
     private final PIDController yController;
     private final PIDController rotationController;
     
-    // Tolerances for position and rotation
     private final double POSITION_TOLERANCE = Constants.FieldMovementConstants.DEFAULT_POSITION_TOLERANCE;
     private final double ROTATION_TOLERANCE = Constants.FieldMovementConstants.DEFAULT_ROTATION_TOLERANCE;
     
-    // Maximum speeds
     private final double MAX_TRANSLATION_SPEED = Constants.FieldMovementConstants.MAX_AUTO_TRANSLATION_SPEED;
     private final double MAX_ROTATION_SPEED = Constants.FieldMovementConstants.MAX_AUTO_ROTATION_SPEED;
     
     private final SwerveSubsystem swerveSubsystem;
     private final ShuffleboardTab autoMoveTab = Shuffleboard.getTab("Auto Movement");
     
-    /**
-     * Creates a new AutoMovements instance with separate X/Y PID controllers
-     * 
-     * @param swerveSubsystem The swerve drive subsystem
-     */
+    // Pre-create dashboard entries
+    private final GenericEntry currentXEntry = autoMoveTab.add("Current X", 0.0).getEntry();
+    private final GenericEntry currentYEntry = autoMoveTab.add("Current Y", 0.0).getEntry();
+    private final GenericEntry currentRotationEntry = autoMoveTab.add("Current Rotation", 0.0).getEntry();
+    private final GenericEntry targetXEntry = autoMoveTab.add("Target X", 0.0).getEntry();
+    private final GenericEntry targetYEntry = autoMoveTab.add("Target Y", 0.0).getEntry();
+    private final GenericEntry targetRotationEntry = autoMoveTab.add("Target Rotation", 0.0).getEntry();
+    private final GenericEntry xOutputEntry = autoMoveTab.add("X Output", 0.0).getEntry();
+    private final GenericEntry yOutputEntry = autoMoveTab.add("Y Output", 0.0).getEntry();
+    private final GenericEntry rotationOutputEntry = autoMoveTab.add("Rotation Output", 0.0).getEntry();
+    private final GenericEntry distanceErrorEntry = autoMoveTab.add("Distance Error", 0.0).getEntry();
+    private final GenericEntry rotationErrorEntry = autoMoveTab.add("Rotation Error", 0.0).getEntry();
+    private final GenericEntry atTargetEntry = autoMoveTab.add("At Target", false).getEntry();
+    
     public AutoMovements(SwerveSubsystem swerveSubsystem) {
         this.swerveSubsystem = swerveSubsystem;
         
-        // Initialize separate PID controllers for X and Y movement
         this.xController = new PIDController(
             Constants.FieldMovementConstants.X_TRANSLATION_P, 
             Constants.FieldMovementConstants.X_TRANSLATION_I, 
@@ -214,78 +193,54 @@ public class AutoMovements {
             Constants.FieldMovementConstants.ROTATION_D
         );
         
-        // Configure PID controllers
         xController.setTolerance(POSITION_TOLERANCE);
         yController.setTolerance(POSITION_TOLERANCE);
         rotationController.setTolerance(Math.toRadians(ROTATION_TOLERANCE));
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
     }
     
-    /**
-     * Creates a custom alignment position for any AprilTag
-     */
     public static Pose2d createTagAlignmentPosition(int tagId, double distanceFromTag, double sideOffset) {
         Pose2d tagPose2d = getTagPose(tagId);
         
-        // Create transform to position robot at specified distance and side offset
         Transform2d alignmentOffset = new Transform2d(
-            new Translation2d(-distanceFromTag, sideOffset), // Distance back from tag with side offset
-            new Rotation2d(Math.PI) // Face the tag
+            new Translation2d(-distanceFromTag, sideOffset),
+            new Rotation2d(Math.PI)
         );
         
         return tagPose2d.transformBy(alignmentOffset);
     }
     
-    /**
-     * Creates a command to align with any AprilTag at a specified distance
-     */
     public Command alignWithTag(int tagId, double distanceFromTag) {
         Pose2d alignmentPose = createTagAlignmentPosition(tagId, distanceFromTag, 0.0);
         return moveToPosition(alignmentPose);
     }
     
-    /**
-     * Creates a command to align with an AprilTag on the left side
-     */
     public Command alignWithTagLeft(int tagId) {
         return moveToPosition(createTagAlignmentPosition(tagId, 
             Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
             Constants.FieldMovementConstants.LEFT_POSITION_OFFSET));
     }
     
-    /**
-     * Creates a command to align with an AprilTag on the right side
-     */
     public Command alignWithTagRight(int tagId) {
         return moveToPosition(createTagAlignmentPosition(tagId, 
             Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
             -Constants.FieldMovementConstants.RIGHT_POSITION_OFFSET));
     }
     
-    /**
-     * Creates a command to align with an AprilTag for algae (centered)
-     */
     public Command alignWithTagAlgae(int tagId) {
         return moveToPosition(createTagAlignmentPosition(tagId, 
             Constants.FieldMovementConstants.POSITION_DISTANCE_FROM_TAG, 
             0.0));
     }
     
-    /**
-     * Creates a command to move the robot to a specific field position
-     */
     public Command moveToPosition(FieldPosition targetPosition) {
         return moveToPosition(targetPosition.getPose());
     }
     
-    /**
-     * Creates a command to move the robot to a specific pose
-     */
     public Command moveToPosition(Pose2d targetPose) {
         return swerveSubsystem.run(() -> {
             Pose2d currentPose = swerveSubsystem.getPose();
             
-            // Calculate PID outputs for X, Y, and rotation
             double xOutput = xController.calculate(currentPose.getX(), targetPose.getX());
             double yOutput = yController.calculate(currentPose.getY(), targetPose.getY());
             double rotationOutput = rotationController.calculate(
@@ -293,27 +248,20 @@ public class AutoMovements {
                 targetPose.getRotation().getRadians()
             );
             
-            // Clamp outputs to maximum speeds
             xOutput = Math.max(-MAX_TRANSLATION_SPEED, Math.min(MAX_TRANSLATION_SPEED, xOutput));
             yOutput = Math.max(-MAX_TRANSLATION_SPEED, Math.min(MAX_TRANSLATION_SPEED, yOutput));
             rotationOutput = Math.max(-MAX_ROTATION_SPEED, Math.min(MAX_ROTATION_SPEED, rotationOutput));
             
-            // Create field-relative chassis speeds
             ChassisSpeeds chassisSpeeds = new ChassisSpeeds(xOutput, yOutput, rotationOutput);
             
-            // Drive the robot
             swerveSubsystem.driveFieldOriented(chassisSpeeds);
             
-            // Update dashboard with current status
             updateDashboard(currentPose, targetPose, xOutput, yOutput, rotationOutput);
             
         }).until(() -> isAtPosition(targetPose))
           .andThen(() -> swerveSubsystem.drive(new ChassisSpeeds(0, 0, 0)));
     }
 
-    /**
-     * Creates a command to move to a position with custom tolerances
-     */
     public Command moveToPositionWithTolerance(FieldPosition targetPosition, 
                                              double positionTolerance, 
                                              double rotationTolerance) {
@@ -342,9 +290,6 @@ public class AutoMovements {
           .andThen(() -> swerveSubsystem.drive(new ChassisSpeeds(0, 0, 0)));
     }
     
-    /**
-     * Creates a command that moves through multiple positions in sequence
-     */
     public Command moveToMultiplePositions(FieldPosition... positions) {
         Command command = moveToPosition(positions[0]);
         
@@ -355,7 +300,6 @@ public class AutoMovements {
         return command;
     }
     
-    // Helper methods
     private boolean isAtPosition(Pose2d targetPose) {
         return isAtPositionWithTolerance(targetPose, POSITION_TOLERANCE, ROTATION_TOLERANCE);
     }
@@ -376,31 +320,28 @@ public class AutoMovements {
     
     private void updateDashboard(Pose2d currentPose, Pose2d targetPose, 
                                double xOutput, double yOutput, double rotationOutput) {
-        autoMoveTab.add("Current X", currentPose.getX());
-        autoMoveTab.add("Current Y", currentPose.getY());
-        autoMoveTab.add("Current Rotation", currentPose.getRotation().getDegrees());
+        currentXEntry.setDouble(currentPose.getX());
+        currentYEntry.setDouble(currentPose.getY());
+        currentRotationEntry.setDouble(currentPose.getRotation().getDegrees());
         
-        autoMoveTab.add("Target X", targetPose.getX());
-        autoMoveTab.add("Target Y", targetPose.getY());
-        autoMoveTab.add("Target Rotation", targetPose.getRotation().getDegrees());
+        targetXEntry.setDouble(targetPose.getX());
+        targetYEntry.setDouble(targetPose.getY());
+        targetRotationEntry.setDouble(targetPose.getRotation().getDegrees());
         
-        autoMoveTab.add("X Output", xOutput);
-        autoMoveTab.add("Y Output", yOutput);
-        autoMoveTab.add("Rotation Output", rotationOutput);
+        xOutputEntry.setDouble(xOutput);
+        yOutputEntry.setDouble(yOutput);
+        rotationOutputEntry.setDouble(rotationOutput);
         
         double distanceError = currentPose.getTranslation().getDistance(targetPose.getTranslation());
         double rotationError = Math.toDegrees(Math.abs(
             currentPose.getRotation().getRadians() - targetPose.getRotation().getRadians()
         ));
         
-        autoMoveTab.add("Distance Error", distanceError);
-        autoMoveTab.add("Rotation Error", rotationError);
-        autoMoveTab.add("At Target", isAtPosition(targetPose));
+        distanceErrorEntry.setDouble(distanceError);
+        rotationErrorEntry.setDouble(rotationError);
+        atTargetEntry.setBoolean(isAtPosition(targetPose));
     }
     
-    /**
-     * Updates PID constants from Shuffleboard (useful for tuning)
-     */
     public void updatePIDFromDashboard() {
         var tuningTab = Shuffleboard.getTab("PID Tuning");
         
@@ -421,7 +362,6 @@ public class AutoMovements {
         rotationController.setPID(rotationP, rotationI, rotationD);
     }
     
-    // Utility methods
     public double getDistanceToPosition(FieldPosition targetPosition) {
         Pose2d currentPose = swerveSubsystem.getPose();
         return currentPose.getTranslation().getDistance(targetPosition.getTranslation());
@@ -451,9 +391,6 @@ public class AutoMovements {
         return new Pose2d(x, y, Rotation2d.fromDegrees(headingDegrees));
     }
     
-    /**
-     * Gets information about a specific AprilTag alignment position
-     */
     public String getPositionInfo(FieldPosition position) {
         String positionType = position.isLeftPosition() ? "Left" : 
                              position.isRightPosition() ? "Right" :

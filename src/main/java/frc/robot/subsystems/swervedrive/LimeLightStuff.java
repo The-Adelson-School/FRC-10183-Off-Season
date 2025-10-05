@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.networktables.GenericEntry;
 
 public class LimeLightStuff {
     
@@ -38,10 +39,48 @@ public class LimeLightStuff {
     private final ShuffleboardTab visionTab = Shuffleboard.getTab("Vision");
     private final ShuffleboardTab debugTab = Shuffleboard.getTab("Vision Debug");
     
+    // Pre-create dashboard entries to avoid duplicate creation
+    private final GenericEntry rightCameraMeasurementsEntry = visionTab.add("Right Camera Measurements", 0).getEntry();
+    private final GenericEntry leftCameraMeasurementsEntry = visionTab.add("Left Camera Measurements", 0).getEntry();
+    private final GenericEntry rejectedMeasurementsEntry = visionTab.add("Rejected Measurements", 0).getEntry();
+    private final GenericEntry totalMeasurementsEntry = visionTab.add("Total Measurements", 0).getEntry();
+    private final GenericEntry acceptanceRateEntry = visionTab.add("Acceptance Rate (%)", 0.0).getEntry();
+    
+    private final GenericEntry rightCameraHasTargetEntry = visionTab.add("Right Camera Has Target", false).getEntry();
+    private final GenericEntry leftCameraHasTargetEntry = visionTab.add("Left Camera Has Target", false).getEntry();
+    private final GenericEntry rightCameraTagCountEntry = visionTab.add("Right Camera Tag Count", 0).getEntry();
+    private final GenericEntry leftCameraTagCountEntry = visionTab.add("Left Camera Tag Count", 0).getEntry();
+    
+    // MegaTag pose entries
+    private final GenericEntry rightCameraMegaTagXEntry = visionTab.add("Right MegaTag X", 0.0).getEntry();
+    private final GenericEntry rightCameraMegaTagYEntry = visionTab.add("Right MegaTag Y", 0.0).getEntry();
+    private final GenericEntry rightCameraMegaTagRotationEntry = visionTab.add("Right MegaTag Rotation", 0.0).getEntry();
+    private final GenericEntry leftCameraMegaTagXEntry = visionTab.add("Left MegaTag X", 0.0).getEntry();
+    private final GenericEntry leftCameraMegaTagYEntry = visionTab.add("Left MegaTag Y", 0.0).getEntry();
+    private final GenericEntry leftCameraMegaTagRotationEntry = visionTab.add("Left MegaTag Rotation", 0.0).getEntry();
+    
+    private final GenericEntry lastMeasurementSourceEntry = debugTab.add("Last Measurement Source", "").getEntry();
+    private final GenericEntry lastMeasurementConfidenceEntry = debugTab.add("Last Measurement Confidence", 0.0).getEntry();
+    private final GenericEntry lastMeasurementTagsEntry = debugTab.add("Last Measurement Tags", 0).getEntry();
+    private final GenericEntry lastMeasurementDistanceEntry = debugTab.add("Last Measurement Distance", 0.0).getEntry();
+    private final GenericEntry lastRejectedReasonEntry = debugTab.add("Last Rejected Reason", "").getEntry();
+    
     // Statistics tracking
     private int rightCameraMeasurements = 0;
     private int leftCameraMeasurements = 0;
     private int rejectedMeasurements = 0;
+    
+    // Track last processed timestamps to filter duplicate poses
+    private double lastRightCameraTimestamp = -1.0;
+    private double lastLeftCameraTimestamp = -1.0;
+    
+    // Store the single current pose for each camera (eliminates ghost robots)
+    private Pose2d currentRightCameraPose = null;
+    private Pose2d currentLeftCameraPose = null;
+    
+    // One-time odometry reset tracking
+    private boolean hasPerformedInitialOdometryReset = false;
+    private final Consumer<Pose2d> odometryResetCallback;
     
     /**
      * Represents a vision measurement with pose, timestamp, and confidence data
@@ -69,7 +108,18 @@ public class LimeLightStuff {
      * @param poseConsumer Function to consume vision measurements (typically SwerveDrive::addVisionMeasurement)
      */
     public LimeLightStuff(Consumer<VisionMeasurement> poseConsumer) {
+        this(poseConsumer, null);
+    }
+    
+    /**
+     * Creates a new LimeLightStuff instance with configured cameras and odometry reset
+     * 
+     * @param poseConsumer Function to consume vision measurements
+     * @param odometryResetCallback Function to reset odometry (optional)
+     */
+    public LimeLightStuff(Consumer<VisionMeasurement> poseConsumer, Consumer<Pose2d> odometryResetCallback) {
         this.poseConsumer = poseConsumer;
+        this.odometryResetCallback = odometryResetCallback;
         
         // Configure cameras with simple names - transforms handled in Limelight interface
         this.rightCamera = new LimelightCamera(VisionConstants.RIGHT_LIMELIGHT_NAME);
@@ -101,34 +151,38 @@ public class LimeLightStuff {
     /**
      * Updates robot orientation for MegaTag2 (call this every loop with current robot state)
      */
-    public void updateRobotOrientation(double yawDegrees, double yawRateDegPerSec) {
+    public void updateRobotOrientation(double yawDegrees) {
         if (VisionConstants.ENABLE_MEGATAG2) {
-            LimelightHelpers.SetRobotOrientation_NoFlush(
+            // Debug output
+            SmartDashboard.putNumber("Vision Yaw Input", yawDegrees);
+            SmartDashboard.putBoolean("MegaTag2 Enabled", true);
+            
+            LimelightHelpers.SetRobotOrientation(
                 rightCamera.getName(), 
                 yawDegrees, 
-                yawRateDegPerSec, 
-                VisionConstants.PITCH_DEGREES, 
-                VisionConstants.PITCH_RATE_DEG_PER_SEC, 
-                VisionConstants.ROLL_DEGREES, 
-                VisionConstants.ROLL_RATE_DEG_PER_SEC
+                0.0,    
+                0.0,   
+                0.0,    
+                0.0,    
+                0.0   
             );
-            LimelightHelpers.SetRobotOrientation_NoFlush(
+            LimelightHelpers.SetRobotOrientation(
                 leftCamera.getName(), 
                 yawDegrees, 
-                yawRateDegPerSec, 
-                VisionConstants.PITCH_DEGREES, 
-                VisionConstants.PITCH_RATE_DEG_PER_SEC, 
-                VisionConstants.ROLL_DEGREES, 
-                VisionConstants.ROLL_RATE_DEG_PER_SEC
+                0.0,    
+                0.0,   
+                0.0,    
+                0.0,    
+                0.0   
             );
-            LimelightHelpers.Flush(); // Flush all updates at once
+            
+        
+        } else {
+            SmartDashboard.putBoolean("MegaTag2 Enabled", false);
         }
     }
-    
-    /**
-     * Process vision measurements from all cameras and update odometry
-     * Call this method periodically (in robot periodic or subsystem periodic)
-     */
+
+
     public void processVisionMeasurements() {
         // Process each camera
         processCameraMeasurements(rightCamera);
@@ -143,15 +197,80 @@ public class LimeLightStuff {
      */
     private void processCameraMeasurements(LimelightCamera camera) {
         try {
-            // Get pose estimate using blue alliance coordinates (recommended)
-            PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(camera.getName());
+            // Get alliance-aware pose estimate
+            PoseEstimate poseEstimate = getAllianceAwarePoseEstimate(camera.getName());
             
-            if (!LimelightHelpers.validPoseEstimate(poseEstimate)) {
-                return; // No valid measurement
+            if (poseEstimate == null || poseEstimate.pose == null) {
+                return; // No pose data available
             }
             
-            // Validate the measurement
+            // CRITICAL: Filter out duplicate/historical poses to prevent ghost robots
+            boolean isRightCamera = (camera == rightCamera);
+            double lastTimestamp = isRightCamera ? lastRightCameraTimestamp : lastLeftCameraTimestamp;
+            
+            // Only process if this is a newer timestamp (prevents processing pose history/duplicates)
+            if (poseEstimate.timestampSeconds <= lastTimestamp) {
+                return; // Skip older/duplicate poses
+            }
+            
+            // Update timestamp tracking
+            if (isRightCamera) {
+                lastRightCameraTimestamp = poseEstimate.timestampSeconds;
+                currentRightCameraPose = poseEstimate.pose; // Store single current pose
+            } else {
+                lastLeftCameraTimestamp = poseEstimate.timestampSeconds;
+                currentLeftCameraPose = poseEstimate.pose; // Store single current pose
+            }
+            
+            // Update MegaTag pose on dashboard - ONLY the single current pose (no ghosts)
+            if (isRightCamera) {
+                rightCameraMegaTagXEntry.setDouble(poseEstimate.pose.getX());
+                rightCameraMegaTagYEntry.setDouble(poseEstimate.pose.getY());
+                rightCameraMegaTagRotationEntry.setDouble(poseEstimate.pose.getRotation().getDegrees());
+                
+                // Also put on main SmartDashboard for easy access - SINGLE POSE ONLY
+                SmartDashboard.putNumber("Right MegaTag X", poseEstimate.pose.getX());
+                SmartDashboard.putNumber("Right MegaTag Y", poseEstimate.pose.getY());
+                SmartDashboard.putNumber("Right MegaTag Rotation", poseEstimate.pose.getRotation().getDegrees());
+                SmartDashboard.putString("Right MegaTag Pose", String.format("(%.2f, %.2f, %.1f°)", 
+                    poseEstimate.pose.getX(), poseEstimate.pose.getY(), poseEstimate.pose.getRotation().getDegrees()));
+                SmartDashboard.putNumber("Right Camera Last Timestamp", poseEstimate.timestampSeconds);
+            } else {
+                leftCameraMegaTagXEntry.setDouble(poseEstimate.pose.getX());
+                leftCameraMegaTagYEntry.setDouble(poseEstimate.pose.getY());
+                leftCameraMegaTagRotationEntry.setDouble(poseEstimate.pose.getRotation().getDegrees());
+                
+                // Also put on main SmartDashboard for easy access - SINGLE POSE ONLY
+                SmartDashboard.putNumber("Left MegaTag X", poseEstimate.pose.getX());
+                SmartDashboard.putNumber("Left MegaTag Y", poseEstimate.pose.getY());
+                SmartDashboard.putNumber("Left MegaTag Rotation", poseEstimate.pose.getRotation().getDegrees());
+                SmartDashboard.putString("Left MegaTag Pose", String.format("(%.2f, %.2f, %.1f°)", 
+                    poseEstimate.pose.getX(), poseEstimate.pose.getY(), poseEstimate.pose.getRotation().getDegrees()));
+                SmartDashboard.putNumber("Left Camera Last Timestamp", poseEstimate.timestampSeconds);
+            }
+            
+            // Combined MegaTag info - shows which camera has the most recent valid reading
+            SmartDashboard.putString("Latest MegaTag Source", camera.getName());
+            SmartDashboard.putString("Latest MegaTag Pose", String.format("(%.2f, %.2f, %.1f°)", 
+                poseEstimate.pose.getX(), poseEstimate.pose.getY(), poseEstimate.pose.getRotation().getDegrees()));
+            SmartDashboard.putNumber("Latest MegaTag Timestamp", poseEstimate.timestampSeconds);
+            SmartDashboard.putString("Alliance", isRedAlliance() ? "RED" : "BLUE");
+            
+            if (!LimelightHelpers.validPoseEstimate(poseEstimate)) {
+                return; // No valid measurement for odometry
+            }
+            
+            // Validate the measurement for odometry use
             if (isValidMeasurement(poseEstimate, camera)) {
+                // ONE-TIME ODOMETRY RESET: Reset odometry on first trusted vision measurement
+                if (!hasPerformedInitialOdometryReset && odometryResetCallback != null) {
+                    hasPerformedInitialOdometryReset = true;
+                    odometryResetCallback.accept(poseEstimate.pose);
+                    System.out.println("INITIAL ODOMETRY RESET: Set robot pose to " + poseEstimate.pose + " from " + camera.getName());
+                    SmartDashboard.putBoolean("Vision Odometry Reset Complete", true);
+                    SmartDashboard.putString("Vision Odometry Reset Source", camera.getName());
+                }
+                
                 // Calculate confidence based on tag count, distance, and ambiguity
                 double confidence = calculateConfidence(poseEstimate);
                 
@@ -167,31 +286,52 @@ public class LimeLightStuff {
                 poseConsumer.accept(measurement);
                 
                 // Update statistics
-                if (camera == rightCamera) {
+                if (isRightCamera) {
                     rightCameraMeasurements++;
                 } else {
                     leftCameraMeasurements++;
                 }
                 
                 // Debug output - shows active vision integration
-                debugTab.add("Last Measurement Source", camera.getName());
-                debugTab.add("Last Measurement Confidence", confidence);
-                debugTab.add("Last Measurement Tags", poseEstimate.tagCount);
-                debugTab.add("Last Measurement Distance", poseEstimate.avgTagDist);
+                lastMeasurementSourceEntry.setString(camera.getName());
+                lastMeasurementConfidenceEntry.setDouble(confidence);
+                lastMeasurementTagsEntry.setDouble(poseEstimate.tagCount);
+                lastMeasurementDistanceEntry.setDouble(poseEstimate.avgTagDist);
                 
-                // Log successful measurement processing
-                System.out.println(String.format("Vision Update: %s - Tags: %d, Confidence: %.3f, Distance: %.2fm", 
-                    camera.getName(), poseEstimate.tagCount, confidence, poseEstimate.avgTagDist));
+                // Log successful measurement processing (reduced frequency to avoid spam)
+                if ((System.currentTimeMillis() % 1000) < 50) { // Only log every ~1 second
+                    System.out.println(String.format("Vision Update: %s (%s) - Tags: %d, Confidence: %.3f, Distance: %.2fm, TS: %.3f", 
+                        camera.getName(), isRedAlliance() ? "RED" : "BLUE", poseEstimate.tagCount, confidence, poseEstimate.avgTagDist, poseEstimate.timestampSeconds));
+                }
                     
             } else {
                 rejectedMeasurements++;
                 // Debug rejected measurements
-                debugTab.add("Last Rejected Reason", getRejectionReason(poseEstimate, camera));
+                lastRejectedReasonEntry.setString(getRejectionReason(poseEstimate, camera));
             }
             
         } catch (Exception e) {
             DriverStation.reportError("Vision processing error for " + camera.getName() + ": " + e.getMessage(), false);
         }
+    }
+    
+    /**
+     * Get alliance-aware pose estimate from Limelight
+     */
+    private PoseEstimate getAllianceAwarePoseEstimate(String cameraName) {
+        if (isRedAlliance()) {
+            return LimelightHelpers.getBotPoseEstimate_wpiRed(cameraName);
+        } else {
+            return LimelightHelpers.getBotPoseEstimate_wpiBlue(cameraName);
+        }
+    }
+    
+    /**
+     * Check if we're on red alliance
+     */
+    private boolean isRedAlliance() {
+        var alliance = DriverStation.getAlliance();
+        return alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red;
     }
     
     /**
@@ -203,9 +343,16 @@ public class LimeLightStuff {
             return false;
         }
         
-        // Check Z-axis error (pose height should be reasonable for a ground robot)
-        if (Math.abs(poseEstimate.pose.getY()) > VisionConstants.MAX_Z_ERROR) {
-            return false; // Reject if robot appears to be floating or underground
+        // FIXED: Check Z-axis error (height) - use pose.getZ() instead of pose.getY()
+        // For 2D pose, check if the pose seems reasonable (not floating)
+        // Note: Pose2d doesn't have Z, but the 3D pose estimate might indicate unreasonable height
+        // We'll validate the pose is reasonable by checking if it's within field bounds
+        double x = poseEstimate.pose.getX();
+        double y = poseEstimate.pose.getY();
+        
+        // Basic field bounds check (adjust for your field size)
+        if (x < -1.0 || x > 17.0 || y < -1.0 || y > 9.0) {
+            return false; // Outside reasonable field bounds
         }
         
         // Check individual tag ambiguity
@@ -295,19 +442,33 @@ public class LimeLightStuff {
      * Update Shuffleboard with vision statistics and status
      */
     private void updateDashboard() {
-        visionTab.add("Right Camera Measurements", rightCameraMeasurements);
-        visionTab.add("Left Camera Measurements", leftCameraMeasurements);
-        visionTab.add("Rejected Measurements", rejectedMeasurements);
-        visionTab.add("Total Measurements", rightCameraMeasurements + leftCameraMeasurements);
-        visionTab.add("Acceptance Rate (%)", 
-            (rightCameraMeasurements + leftCameraMeasurements) / 
-            Math.max(1.0, rightCameraMeasurements + leftCameraMeasurements + rejectedMeasurements) * 100.0);
+        rightCameraMeasurementsEntry.setDouble(rightCameraMeasurements);
+        leftCameraMeasurementsEntry.setDouble(leftCameraMeasurements);
+        rejectedMeasurementsEntry.setDouble(rejectedMeasurements);
+        totalMeasurementsEntry.setDouble(rightCameraMeasurements + leftCameraMeasurements);
+        
+        double acceptanceRate = (rightCameraMeasurements + leftCameraMeasurements) / 
+            Math.max(1.0, rightCameraMeasurements + leftCameraMeasurements + rejectedMeasurements) * 100.0;
+        acceptanceRateEntry.setDouble(acceptanceRate);
         
         // Current target information for each camera
-        visionTab.add("Right Camera Has Target", LimelightHelpers.getTV(rightCamera.getName()));
-        visionTab.add("Left Camera Has Target", LimelightHelpers.getTV(leftCamera.getName()));
-        visionTab.add("Right Camera Tag Count", LimelightHelpers.getTargetCount(rightCamera.getName()));
-        visionTab.add("Left Camera Tag Count", LimelightHelpers.getTargetCount(leftCamera.getName()));
+        rightCameraHasTargetEntry.setBoolean(LimelightHelpers.getTV(rightCamera.getName()));
+        leftCameraHasTargetEntry.setBoolean(LimelightHelpers.getTV(leftCamera.getName()));
+        rightCameraTagCountEntry.setDouble(LimelightHelpers.getTargetCount(rightCamera.getName()));
+        leftCameraTagCountEntry.setDouble(LimelightHelpers.getTargetCount(leftCamera.getName()));
+        
+        // MegaTag status on main SmartDashboard
+        SmartDashboard.putBoolean("Right Camera Active", LimelightHelpers.getTV(rightCamera.getName()));
+        SmartDashboard.putBoolean("Left Camera Active", LimelightHelpers.getTV(leftCamera.getName()));
+        SmartDashboard.putNumber("Right Camera Tags", LimelightHelpers.getTargetCount(rightCamera.getName()));
+        SmartDashboard.putNumber("Left Camera Tags", LimelightHelpers.getTargetCount(leftCamera.getName()));
+        
+        // Debug info for ghost robot prevention
+        SmartDashboard.putBoolean("Right Camera Has Current Pose", currentRightCameraPose != null);
+        SmartDashboard.putBoolean("Left Camera Has Current Pose", currentLeftCameraPose != null);
+        SmartDashboard.putNumber("Right Camera Processed Measurements", rightCameraMeasurements);
+        SmartDashboard.putNumber("Left Camera Processed Measurements", leftCameraMeasurements);
+        SmartDashboard.putBoolean("Initial Odometry Reset Done", hasPerformedInitialOdometryReset);
     }
     
     /**
@@ -333,11 +494,44 @@ public class LimeLightStuff {
     }
     
     /**
-     * Reset statistics counters
+     * Reset statistics counters and pose tracking
      */
     public void resetStatistics() {
         rightCameraMeasurements = 0;
         leftCameraMeasurements = 0;
         rejectedMeasurements = 0;
+        
+        // Reset timestamp tracking to prevent stale data
+        lastRightCameraTimestamp = -1.0;
+        lastLeftCameraTimestamp = -1.0;
+        currentRightCameraPose = null;
+        currentLeftCameraPose = null;
+        
+        // Reset odometry reset flag if needed
+        hasPerformedInitialOdometryReset = false;
+        
+        System.out.println("Vision statistics and pose tracking reset - ghost robot prevention reinitialized");
+    }
+    
+    /**
+     * Force the initial odometry reset (for testing/debugging)
+     */
+    public void forceOdometryReset() {
+        hasPerformedInitialOdometryReset = false;
+        System.out.println("Odometry reset flag cleared - will reset on next valid vision measurement");
+    }
+    
+    /**
+     * Get the current single pose from right camera (no ghost robots)
+     */
+    public Pose2d getCurrentRightCameraPose() {
+        return currentRightCameraPose;
+    }
+    
+    /**
+     * Get the current single pose from left camera (no ghost robots)
+     */
+    public Pose2d getCurrentLeftCameraPose() {
+        return currentLeftCameraPose;
     }
 }

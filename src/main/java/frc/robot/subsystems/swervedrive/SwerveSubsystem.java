@@ -31,6 +31,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -165,8 +166,9 @@ public class SwerveSubsystem extends SubsystemBase
    * Setup the vision processing system
    */
   private void setupVisionSystem() {
-    visionSystem = new LimeLightStuff(this::processVisionMeasurement);
-    System.out.println("Vision system initialized with dual Limelight support");
+    // Pass odometry reset callback to vision system
+    visionSystem = new LimeLightStuff(this::processVisionMeasurement, this::resetOdometry);
+    System.out.println("Vision system initialized with dual Limelight support and odometry reset capability");
   }
 
   /**
@@ -202,19 +204,32 @@ public class SwerveSubsystem extends SubsystemBase
       // Update odometry frequently
       swerveDrive.updateOdometry();
   
-    // Update robot orientation for MegaTag2
     if (visionSystem != null) {
       double yawDegrees = getHeading().getDegrees();
-      double yawRateRadPerSec = swerveDrive.getRobotVelocity().omegaRadiansPerSecond;
-      double yawRateDegPerSec = Units.radiansToDegrees(yawRateRadPerSec);
-      
-      visionSystem.updateRobotOrientation(yawDegrees, yawRateDegPerSec);
+      visionSystem.updateRobotOrientation(yawDegrees);
       visionSystem.processVisionMeasurements();
     }
 
-    Shuffleboard.getTab("Drivetrain").add("Gyro Heading", swerveDrive.getPose().getRotation().getDegrees());
-    Shuffleboard.getTab("Drivetrain").add("Robot X Position", swerveDrive.getPose().getX());
-    Shuffleboard.getTab("Drivetrain").add("Robot Y Position", swerveDrive.getPose().getY());
+    // Get current robot pose and send to SmartDashboard
+    Pose2d currentPose = getPose();
+    SmartDashboard.putNumber("Robot X Position", currentPose.getX());
+    SmartDashboard.putNumber("Robot Y Position", currentPose.getY());
+    SmartDashboard.putNumber("Robot Rotation (deg)", currentPose.getRotation().getDegrees());
+    SmartDashboard.putString("Robot Pose", String.format("(%.2f, %.2f, %.1f°)", 
+        currentPose.getX(), currentPose.getY(), currentPose.getRotation().getDegrees()));
+
+    // Additional pose information
+    SmartDashboard.putNumber("Robot Heading", getHeading().getDegrees());
+    
+    // Robot velocity information
+    ChassisSpeeds robotVelocity = getRobotVelocity();
+    SmartDashboard.putNumber("Robot Velocity X", robotVelocity.vxMetersPerSecond);
+    SmartDashboard.putNumber("Robot Velocity Y", robotVelocity.vyMetersPerSecond);
+    SmartDashboard.putNumber("Robot Angular Velocity", Units.radiansToDegrees(robotVelocity.omegaRadiansPerSecond));
+
+  //  Shuffleboard.getTab("Drivetrain").add("Gyro Heading", swerveDrive.getPose().getRotation().getDegrees());
+  //  Shuffleboard.getTab("Drivetrain").add("Robot X Position", swerveDrive.getPose().getX());
+   // Shuffleboard.getTab("Drivetrain").add("Robot Y Position", swerveDrive.getPose().getY());
   }
 
   /**
@@ -674,8 +689,7 @@ public class SwerveSubsystem extends SubsystemBase
   public void zeroGyro()
   {
     swerveDrive.zeroGyro();
-    // Set the robot to face 180 degrees after zeroing
-    resetOdometry(new Pose2d(getPose().getTranslation(), Rotation2d.fromDegrees(180)));
+  
   }
 
   /**
