@@ -49,7 +49,7 @@ public class RobotContainer
   // The robot's subsystems and commands are defined here...
   private final SwerveSubsystem       drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
                                                                                 "swerve"));
-  private final ElevatorSubsystem elevator = new ElevatorSubsystem(3, 5, 1, 4, 0); // Leader=3, Follower=5, Intake=1, Shooter=4
+  private final ElevatorSubsystem elevator = new ElevatorSubsystem(3, 5, 1, 4, 2); // Leader=3, Follower=5, Intake=1, Shooter=4, AlgaeKicker=2
   // Create command instances with proper dependency injection
   private final IncreaseCommand increaseCommand = new IncreaseCommand(elevator);
   private final DecreaseCommand decreaseCommand = new DecreaseCommand(elevator);
@@ -188,7 +188,69 @@ public class RobotContainer
       
       // Driver controls (moved from operator)
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-      driverXbox.x().onTrue(new AlignToReefTagRelative(true, drivebase)); // Use relative alignment instead of odometry
+      
+      // X button - FIXED: Algae kicking sequence with tag-based elevator positioning
+      driverXbox.x().onTrue(
+        new ParallelCommandGroup(
+          // Align with algae-specific offset, prioritizing left limelight
+          new AlignToReefTagRelative(false, drivebase, true, true), // false = center, true = force left camera, true = algae mode
+          // Sequential elevator and algae kicker operations (no subsystem conflict)
+          new SequentialCommandGroup(
+            // Start algae kicker immediately
+            Commands.runOnce(() -> elevator.startAlgaeKicker(), elevator),
+            Commands.waitUntil(() -> {
+              // Wait for alignment to start and detect a tag
+              return !drivebase.getPose().equals(new Pose2d());
+            }),
+            // Move elevator to position based on detected tag
+            Commands.runOnce(() -> {
+              // Get the detected tag ID from the alignment command
+              double detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-left");
+              
+              // If left camera doesn't see a tag, try right camera
+              if (detectedTagID <= 0) {
+                detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-right");
+              }
+              
+              // Position A tags: 17, 11, 7, 21, 9, 19
+              if (detectedTagID == 17 || detectedTagID == 11 || detectedTagID == 7 ||
+                  detectedTagID == 21 || detectedTagID == 9 || detectedTagID == 19) {
+                elevator.goToAlgaePositionA();
+                System.out.println("ALGAE KICKING: Detected Position A tag " + detectedTagID + " - Moving to Algae Position A");
+              }
+              // Position B tags: 18, 7, 22, 6, 8, 20
+              else if (detectedTagID == 18 || detectedTagID == 7 || detectedTagID == 22 ||
+                       detectedTagID == 6 || detectedTagID == 8 || detectedTagID == 20) {
+                elevator.goToAlgaePositionB();
+                System.out.println("ALGAE KICKING: Detected Position B tag " + detectedTagID + " - Moving to Algae Position B");
+              }
+              // Unknown tag - default to Position A
+              else {
+                elevator.goToAlgaePositionA();
+                System.out.println("ALGAE KICKING: Unknown/No tag detected (" + detectedTagID + ") - Defaulting to Algae Position A");
+              }
+              
+              // Update SmartDashboard with tag detection info
+              edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Algae Detected Tag ID", detectedTagID);
+              edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putString("Algae Elevator Position", 
+                (detectedTagID == 17 || detectedTagID == 11 || detectedTagID == 7 ||
+                 detectedTagID == 21 || detectedTagID == 9 || detectedTagID == 19) ? "Position A" :
+                (detectedTagID == 18 || detectedTagID == 7 || detectedTagID == 22 ||
+                 detectedTagID == 6 || detectedTagID == 8 || detectedTagID == 20) ? "Position B" : "Position A (Default)");
+            }, elevator),
+            // Wait for elevator to reach target position
+            Commands.waitUntil(() -> {
+              // Check if we're at either algae position
+              return elevator.isElevatorAtAlgaePositionA() || elevator.isElevatorAtAlgaePositionB();
+            })
+          )
+        )
+        .finallyDo((interrupted) -> {
+          // Stop algae kicker when command ends (whether completed or interrupted)
+          elevator.stopAlgaeKicker();
+        })
+        .withName("X_AlgaeKick_TagBasedElevator_LeftCameraPriority")
+      );
       
       // B button now controls shooter override in stages 1 and 2 with full power (30A limit)
       driverXbox.b()
@@ -208,33 +270,63 @@ public class RobotContainer
       driverXbox.povUp().onTrue(increaseCommand);
       driverXbox.povDown().onTrue(decreaseCommand);
       
-      // Intake control on left bumper
-      driverXbox.leftBumper()
-        .whileTrue(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT), elevator))
-        .onFalse(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP), elevator));
+      // Intake control on left bumper - CHANGED TO STAGE 1 SEQUENCE
+      driverXbox.leftBumper().onTrue(
+        new ParallelCommandGroup(
+          new AlignToReefTagRelative(false, drivebase), // LEFT alignment (false = left side)
+          new SequentialCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1 instead of 2
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE)),
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+          )
+        ).withName("LeftBumper_LeftAlign_Stage1_Shooter")
+      );
 
-      // Shooter manual override moved to B button (see above)
-      // Right bumper now available for other functions
-      driverXbox.rightBumper().whileTrue(Commands.none()); // Available for future use
+      // Right bumper - CHANGED TO STAGE 1 SEQUENCE  
+      driverXbox.rightBumper().onTrue(
+        new ParallelCommandGroup(
+          new AlignToReefTagRelative(true, drivebase), // RIGHT alignment (true = right side)
+          new SequentialCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1 instead of 2
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE)),
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+          )
+        ).withName("RightBumper_RightAlign_Stage1_Shooter")
+      );
 
       // Reset resistance detection on start button
       driverXbox.start().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
       
-      // Automated sequences on triggers
+      // Automated sequences on triggers with alignment - CHANGED TO PARALLEL
       driverXbox.leftTrigger().onTrue(
-        new SequentialCommandGroup(
-        
-          new ParallelCommandGroup(
-            Commands.runOnce(() -> elevator.engageStage(2)),
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
-          ),
-          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-          Commands.waitSeconds(ElevatorConstants.SHOOTER_AUTO_RUN_TIME),
-          Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
-        ).withName("LeftTrigger_LeftPos_Stage2_Shooter")
+        new ParallelCommandGroup(
+          new AlignToReefTagRelative(false, drivebase), // LEFT alignment (false = left side)
+          new SequentialCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO)),
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+          )
+        ).withName("LeftTrigger_LeftAlign_Stage2_Shooter")
       );
       
-      
+      driverXbox.rightTrigger().onTrue(
+        new ParallelCommandGroup(
+          new AlignToReefTagRelative(true, drivebase), // RIGHT alignment (true = right side)
+          new SequentialCommandGroup(
+            Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO)),
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
+            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
+            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+          )
+        ).withName("RightTrigger_RightAlign_Stage2_Shooter")
+      );
 
       // Unused buttons for future expansion
       driverXbox.back().whileTrue(Commands.none());
@@ -277,10 +369,11 @@ public class RobotContainer
 
   public Command reefTagIntakeStage1Command() {
     return new ParallelCommandGroup(
-        new AlignToReefTagPose(true, drivebase), // New pose-based alignment
+        new AlignToReefTagPose(true, drivebase), 
         new InstantCommand(() -> elevator.engageStage(1))
     )
-    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT)));
+    .andThen(new InstantCommand(() -> elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT))
+    );
   }
 
 }

@@ -37,6 +37,11 @@ public final class Constants
     public static final int STOWED_LEVEL = (int)(0 * COUNTS_PER_INCH);     
     public static final int LEVEL_ONE = (int)(18.5 * COUNTS_PER_INCH);            
     public static final int LEVEL_TWO = (int)(36.5 * COUNTS_PER_INCH);
+    public static final int LEVEL_THREE = (int)(50.0 * COUNTS_PER_INCH); // NEW: Stage 3 height
+    
+    // NEW: Algae kicker specific elevator positions
+    public static final int ALGAE_POSITION_A = (int)(15.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
+    public static final int ALGAE_POSITION_B = (int)(30.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
 
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
     public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
@@ -75,26 +80,38 @@ public final class Constants
       // Following is for Shooting not intaking
     public static final double SHOOTER_AUTO_RUN_TIME = 0.5;
 
+    // NEW: Algae kicker motor constants
+    public static final double ALGAE_KICKER_ON = 1.0;   // Full power forward
+    public static final double ALGAE_KICKER_STOP = 0.0; // Stop motor
+
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 1;
-    public static final double Y_REEF_ALIGNMENT_P = 1;
-    public static final double ROT_REEF_ALIGNMENT_P = 0.01;
+    public static final double X_REEF_ALIGNMENT_P = 2;
+    public static final double Y_REEF_ALIGNMENT_P = 3;
+    public static final double ROT_REEF_ALIGNMENT_P = 0.04;
   
-    public static final double ROT_SETPOINT_REEF_ALIGNMENT = 0.2;
-    public static final double ROT_TOLERANCE_REEF_ALIGNMENT = 3;
-    public static final double X_SETPOINT_REEF_ALIGNMENT = -0.53;
-    public static final double X_TOLERANCE_REEF_ALIGNMENT = 2.5;
-    public static final double Y_SETPOINT_REEF_ALIGNMENT = 0.12;
-    public static final double Y_TOLERANCE_REEF_ALIGNMENT = 3;
-
-    public static final double ROT_SETPOINT_REEF_ALIGNMENT_2 = 0.2;
-    public static final double ROT_TOLERANCE_REEF_ALIGNMENT_2 = 3;
-    public static final double X_SETPOINT_REEF_ALIGNMENT_2 = -0.53;
-    public static final double X_TOLERANCE_REEF_ALIGNMENT_2 = 2.5;
-    public static final double Y_SETPOINT_REEF_ALIGNMENT_2 = 0.12;
-    public static final double Y_TOLERANCE_REEF_ALIGNMENT_2 = 3;
+    // RIGHT CAMERA SETPOINTS (limelight-right)
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_RIGHT = -13;
+    public static final double ROT_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_RIGHT = -0.4;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_RIGHT = 0.33; // Always positive - sign determined by isRightScore
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    
+    // LEFT CAMERA SETPOINTS (limelight-left)  
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_LEFT = 0.3;
+    public static final double ROT_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_LEFT = -0.35;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_LEFT = 0.1; // Base Y setpoint for left camera
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    
+    // SPECIAL CROSS-CAMERA OFFSET: Right alignment using left camera
+    public static final double Y_OFFSET_RIGHT_ALIGN_ON_LEFT_CAMERA = 0.5; // Additional offset when aligning right with left camera
+    
+    // NEW: Algae kicker specific alignment offset
+    public static final double Y_OFFSET_ALGAE_KICKER = 0.5; // Y offset specifically for algae kicking alignment (adjustable)
 
     public static final double DONT_SEE_TAG_WAIT_TIME = 1;
     public static final double POSE_VALIDATION_TIME = 1;

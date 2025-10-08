@@ -25,6 +25,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     TalonFX elevMotorFollower;
     TalonFX intakeMotor;
     TalonFX shooterMotor;
+    TalonFX algaeKickerMotor; // NEW: Algae kicker motor
     
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0);
     
@@ -48,11 +49,12 @@ public class ElevatorSubsystem extends SubsystemBase {
         .withSize(4, 3)
         .getEntry();
     
-    public ElevatorSubsystem(int elevLeaderID, int elevFollowerID, int intakeID, int shooterID, int unused2){
+    public ElevatorSubsystem(int elevLeaderID, int elevFollowerID, int intakeID, int shooterID, int algaeKickerID){
         elevMotorLeader = new TalonFX(elevLeaderID, "CANivore");
         elevMotorFollower = new TalonFX(elevFollowerID, "CANivore");
         intakeMotor = new TalonFX(intakeID, "CANivore");
         shooterMotor = new TalonFX(shooterID, "CANivore");
+        algaeKickerMotor = new TalonFX(algaeKickerID, "CANivore"); // NEW: Initialize algae kicker
         
         configureMotionMagic();
         
@@ -60,6 +62,7 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotorFollower.setNeutralMode(NeutralModeValue.Brake);
         intakeMotor.setNeutralMode(NeutralModeValue.Brake);
         shooterMotor.setNeutralMode(NeutralModeValue.Brake);
+        algaeKickerMotor.setNeutralMode(NeutralModeValue.Brake); // NEW: Set brake mode
         
         // Follower motor follows leader
         elevMotorFollower.setControl(new Follower(elevLeaderID, false));
@@ -68,6 +71,7 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotorFollower.setPosition(0);
         intakeMotor.setPosition(0);
         shooterMotor.setPosition(0);
+        algaeKickerMotor.setPosition(0); // NEW: Reset position
     }
     
     private void configureMotionMagic() {
@@ -119,6 +123,16 @@ public class ElevatorSubsystem extends SubsystemBase {
         shooterCurrentConfig.withStatorCurrentLimit(35.0);  // 35A stator limit
         
         shooterMotor.getConfigurator().apply(shooterConfig);
+        
+        // Configuration for algae kicker motor (30A supply, 60A stator)
+        TalonFXConfiguration algaeKickerConfig = new TalonFXConfiguration();
+        CurrentLimitsConfigs algaeKickerCurrentConfig = algaeKickerConfig.CurrentLimits;
+        algaeKickerCurrentConfig.withSupplyCurrentLimitEnable(true);
+        algaeKickerCurrentConfig.withStatorCurrentLimitEnable(true);
+        algaeKickerCurrentConfig.withSupplyCurrentLimit(30.0);  // 30A supply limit
+        algaeKickerCurrentConfig.withStatorCurrentLimit(60.0);  // 60A stator limit
+        
+        algaeKickerMotor.getConfigurator().apply(algaeKickerConfig);
     }
 
     public int getStage(){
@@ -167,7 +181,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
 
     public void increaseStage(){
-        if(stage < 2){
+        if(stage < 3){ // NEW: Allow stage 3
             stage++;
             engageStage();
         }
@@ -186,7 +200,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     
     public void engageStage(int targetStage) {
         int previousStage = stage;
-        stage = Math.max(0, Math.min(2, targetStage));
+        stage = Math.max(0, Math.min(3, targetStage)); // Allow stage 3 (0-3 range)
         SmartDashboard.putNumber("Stage", stage);
         
         // Reset resistance detection when leaving stage 0
@@ -196,16 +210,36 @@ public class ElevatorSubsystem extends SubsystemBase {
         
         if (stage == 0) {
             goToHeight(ElevatorConstants.STOWED_LEVEL);
-            // Don't manually set intake/shooter here - let periodic() handle it automatically
         } else if (stage == 1) {
             goToHeight(ElevatorConstants.LEVEL_ONE);
-            setIntakeSpeed(ElevatorConstants.INTAKE_STOP); // Manual control in stages 1 and 2
-            // Shooter controlled by manual override in periodic()
+            setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
         } else if (stage == 2) {
             goToHeight(ElevatorConstants.LEVEL_TWO);
-            setIntakeSpeed(ElevatorConstants.INTAKE_STOP); // Manual control in stages 1 and 2
-            // Shooter controlled by manual override in periodic()
+            setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
+        } else if (stage == 3) {
+            goToHeight(ElevatorConstants.LEVEL_THREE);
+            setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
         }
+    }
+    
+    // NEW: Algae-specific elevator positions
+    public void goToAlgaePositionA() {
+        goToHeight(ElevatorConstants.ALGAE_POSITION_A);
+        SmartDashboard.putString("Elevator Special Position", "Algae Position A");
+    }
+    
+    public void goToAlgaePositionB() {
+        goToHeight(ElevatorConstants.ALGAE_POSITION_B);
+        SmartDashboard.putString("Elevator Special Position", "Algae Position B");
+    }
+    
+    // NEW: Check if elevator is at algae positions
+    public boolean isElevatorAtAlgaePositionA() {
+        return isElevatorAtTarget(ElevatorConstants.ALGAE_POSITION_A);
+    }
+    
+    public boolean isElevatorAtAlgaePositionB() {
+        return isElevatorAtTarget(ElevatorConstants.ALGAE_POSITION_B);
     }
 
     public void defaultCommand() {
@@ -230,6 +264,19 @@ public class ElevatorSubsystem extends SubsystemBase {
             Commands.waitUntil(() -> isElevatorAtTarget(ElevatorConstants.STOWED_LEVEL)),
             Commands.waitSeconds(1.5)
         ).withName("ElevatorAutonomous");
+    }
+
+    // NEW: Algae kicker control methods
+    public void setAlgaeKickerSpeed(double speed) {
+        algaeKickerMotor.set(speed);
+    }
+    
+    public void startAlgaeKicker() {
+        setAlgaeKickerSpeed(ElevatorConstants.ALGAE_KICKER_ON);
+    }
+    
+    public void stopAlgaeKicker() {
+        setAlgaeKickerSpeed(ElevatorConstants.ALGAE_KICKER_STOP);
     }
 
     @Override
@@ -275,11 +322,13 @@ public class ElevatorSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Elevator Follower Position", elevMotorFollower.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Intake Position", intakeMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Shooter Position", shooterMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putNumber("Algae Kicker Position", algaeKickerMotor.getPosition().getValueAsDouble()); // NEW: Dashboard entry
         
         double leaderCurrent = elevMotorLeader.getStatorCurrent().getValueAsDouble();
         double followerCurrent = elevMotorFollower.getStatorCurrent().getValueAsDouble();
         double intakeCurrent = intakeMotor.getStatorCurrent().getValueAsDouble();
         double shooterCurrent = shooterMotor.getStatorCurrent().getValueAsDouble();
+        double algaeKickerCurrent = algaeKickerMotor.getStatorCurrent().getValueAsDouble(); // NEW: Current monitoring
         
         // Create shooter supply current variable and calculate average current
         double shooterSupplyCurrent = shooterMotor.getSupplyCurrent().getValueAsDouble();
@@ -296,6 +345,7 @@ public class ElevatorSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Elevator Follower Current", followerCurrent);
         SmartDashboard.putNumber("Intake Current", intakeCurrent);
         SmartDashboard.putNumber("Shooter Current", shooterCurrent);
+        SmartDashboard.putNumber("Algae Kicker Current", algaeKickerCurrent); // NEW: Dashboard entry
         
         double totalElevatorCurrent = leaderCurrent + followerCurrent;
         SmartDashboard.putNumber("Total Elevator Current", totalElevatorCurrent);
@@ -319,6 +369,7 @@ public class ElevatorSubsystem extends SubsystemBase {
             case 0: return ElevatorConstants.STOWED_LEVEL;
             case 1: return ElevatorConstants.LEVEL_ONE;
             case 2: return ElevatorConstants.LEVEL_TWO;
+            case 3: return ElevatorConstants.LEVEL_THREE;
             default: return ElevatorConstants.STOWED_LEVEL;
         }
     }
@@ -327,6 +378,7 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotorLeader.set(0);
         intakeMotor.set(0);
         shooterMotor.set(0);
+        algaeKickerMotor.set(0); // NEW: Stop algae kicker on emergency
         resetResistanceDetection();
     }
     
