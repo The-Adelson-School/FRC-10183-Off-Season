@@ -147,8 +147,15 @@ public class AlignToReefTagPose extends Command {
             return null;
         }
         
-        // Get robot pose from MegaTag (alliance-aware) - FIXED METHOD NAME
-        Pose2d robotPoseFromMegaTag = drivebase.getVisionSystem().isRedAlliance() ? 
+        // FIXED: Use DriverStation directly instead of vision system
+        boolean isRedAlliance = false;
+        var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
+        if (alliance.isPresent()) {
+            isRedAlliance = alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red;
+        }
+        
+        // Get robot pose from MegaTag (alliance-aware)
+        Pose2d robotPoseFromMegaTag = isRedAlliance ? 
             LimelightHelpers.getBotPose2d_wpiRed(limelightName) :
             LimelightHelpers.getBotPose2d_wpiBlue(limelightName);
             
@@ -193,40 +200,47 @@ public class AlignToReefTagPose extends Command {
     
     private void updateDashboard(Pose2d currentPose, Pose2d targetPose, 
                                double xOutput, double yOutput, double rotOutput, boolean isAligned) {
-        // Current pose
-        alignmentTab.add("Current X", currentPose.getX());
-        alignmentTab.add("Current Y", currentPose.getY());
-        alignmentTab.add("Current Rotation", currentPose.getRotation().getDegrees());
-        
-        // Target pose
-        if (targetPose != null) {
-            alignmentTab.add("Target X", targetPose.getX());
-            alignmentTab.add("Target Y", targetPose.getY());
-            alignmentTab.add("Target Rotation", targetPose.getRotation().getDegrees());
-            
-            // Errors
-            double distanceError = currentPose.getTranslation().getDistance(targetPose.getTranslation());
-            double rotationError = Math.abs(currentPose.getRotation().minus(targetPose.getRotation()).getDegrees());
-            
-            alignmentTab.add("Distance Error", distanceError);
-            alignmentTab.add("Rotation Error", rotationError);
+        // OPTIMIZED: Only update dashboard every few cycles to reduce loop time
+        if (System.currentTimeMillis() % 200 < 20) { // Update every ~200ms instead of every cycle
+            try {
+                // Current pose
+                alignmentTab.add("Current X", currentPose.getX());
+                alignmentTab.add("Current Y", currentPose.getY());
+                alignmentTab.add("Current Rotation", currentPose.getRotation().getDegrees());
+                
+                // Target pose
+                if (targetPose != null) {
+                    alignmentTab.add("Target X", targetPose.getX());
+                    alignmentTab.add("Target Y", targetPose.getY());
+                    alignmentTab.add("Target Rotation", targetPose.getRotation().getDegrees());
+                    
+                    // Errors
+                    double distanceError = currentPose.getTranslation().getDistance(targetPose.getTranslation());
+                    double rotationError = Math.abs(currentPose.getRotation().minus(targetPose.getRotation()).getDegrees());
+                    
+                    alignmentTab.add("Distance Error", distanceError);
+                    alignmentTab.add("Rotation Error", rotationError);
+                }
+                
+                // Control outputs
+                alignmentTab.add("X Output", xOutput);
+                alignmentTab.add("Y Output", yOutput);
+                alignmentTab.add("Rotation Output", rotOutput);
+                
+                // Status
+                alignmentTab.add("Is Aligned", isAligned);
+                alignmentTab.add("Has Valid Target", hasValidTarget);
+                alignmentTab.add("Alignment Timer", alignmentTimer.get());
+                alignmentTab.add("No Target Timer", noTargetTimer.get());
+                alignmentTab.add("Target Side", isRightScore ? "RIGHT" : "LEFT");
+                
+                // Limelight status
+                alignmentTab.add("Limelight Has Target", LimelightHelpers.getTV(limelightName));
+                alignmentTab.add("Limelight Name", limelightName.isEmpty() ? "default" : limelightName);
+            } catch (Exception e) {
+                // Silently handle dashboard update errors
+            }
         }
-        
-        // Control outputs
-        alignmentTab.add("X Output", xOutput);
-        alignmentTab.add("Y Output", yOutput);
-        alignmentTab.add("Rotation Output", rotOutput);
-        
-        // Status
-        alignmentTab.add("Is Aligned", isAligned);
-        alignmentTab.add("Has Valid Target", hasValidTarget);
-        alignmentTab.add("Alignment Timer", alignmentTimer.get());
-        alignmentTab.add("No Target Timer", noTargetTimer.get());
-        alignmentTab.add("Target Side", isRightScore ? "RIGHT" : "LEFT");
-        
-        // Limelight status
-        alignmentTab.add("Limelight Has Target", LimelightHelpers.getTV(limelightName));
-        alignmentTab.add("Limelight Name", limelightName.isEmpty() ? "default" : limelightName);
     }
     
     @Override

@@ -35,13 +35,13 @@ public final class Constants
     public static final double COUNTS_PER_INCH = COUNTS_PER_ROTATION/INCHES_PER_ROTATION;
 
     public static final int STOWED_LEVEL = (int)(0 * COUNTS_PER_INCH);     
-    public static final int LEVEL_ONE = (int)(18.5 * COUNTS_PER_INCH);            
-    public static final int LEVEL_TWO = (int)(36.5 * COUNTS_PER_INCH);
+    public static final int LEVEL_ONE = (int)(23 * COUNTS_PER_INCH);            
+    public static final int LEVEL_TWO = (int)(37.7 * COUNTS_PER_INCH);
     public static final int LEVEL_THREE = (int)(50.0 * COUNTS_PER_INCH); // NEW: Stage 3 height
     
     // NEW: Algae kicker specific elevator positions
-    public static final int ALGAE_POSITION_A = (int)(15.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
-    public static final int ALGAE_POSITION_B = (int)(30.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
+    public static final int ALGAE_POSITION_A = (int)(13.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
+    public static final int ALGAE_POSITION_B = (int)(24.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
 
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
     public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
@@ -52,8 +52,8 @@ public final class Constants
     public static final double MOTION_MAGIC_KV = 0.2;     
     public static final double MOTION_MAGIC_KS = 0.24;    
     public static final double MOTION_MAGIC_KA = MOTION_MAGIC_CRUISE_VELOCITY / MOTION_MAGIC_ACCELERATION;
-    public static final double PEAK_FORWARD_VOLTAGE = 16.0;    
-    public static final double PEAK_REVERSE_VOLTAGE = -4.0;  
+    public static final double PEAK_FORWARD_VOLTAGE = 15.5;    
+    public static final double PEAK_REVERSE_VOLTAGE = -3.5;  
     public static final double MOTION_MAGIC_KG = 1.0;
     
     public static final double ELEVATOR_SUPPLY_CURRENT_LIMIT = 60.0;      
@@ -76,42 +76,75 @@ public final class Constants
     
     // Resistance detection - SHOOTER ONLY
     public static final double SHOOTER_CURRENT_THRESHOLD = 17;
-      public static final double CURRENT_DETECTION_TIME = 0.5;
-      // Following is for Shooting not intaking
-    public static final double SHOOTER_AUTO_RUN_TIME = 0.5;
+    public static final double CURRENT_DETECTION_TIME = 0.5;
+    // Following is for Shooting not intaking
+    public static final double SHOOTER_AUTO_RUN_TIME = 2;
 
     // NEW: Algae kicker motor constants
-    public static final double ALGAE_KICKER_ON = 1.0;   // Full power forward
+    public static final double ALGAE_KICKER_ON = -1.0;   // Full power forward
     public static final double ALGAE_KICKER_STOP = 0.0; // Stop motor
+
+    // COMMENTED OUT: Cage Motor Constants
+    /*
+    public static final int CAGE_MOTOR_ID = 21;
+    public static final int CAGE_CLIMB_ID = 22;
+    
+    // Cage Motor Resistance Detection
+    public static final double CAGE_CURRENT_THRESHOLD = 20.0; // Amps - changeable
+    public static final double CAGE_RESISTANCE_TIME = 0.5; // Seconds - changeable
+    
+    // Cage Motor Motion Magic Settings
+    public static final double CAGE_ROTATION_DEGREES = 45.0; // Degrees - changeable
+    public static final double CAGE_GEAR_RATIO = 45.0; // 45:1 gear ratio
+    public static final double CAGE_MOTION_MAGIC_CRUISE_VELOCITY = 2.0; // Rotations per second - changeable
+    public static final double CAGE_MOTION_MAGIC_ACCELERATION = 4.0; // Rotations per second squared - changeable
+    
+    // Cage Motor PID Constants (changeable)
+    public static final double CAGE_MOTION_MAGIC_KP = 10.0;
+    public static final double CAGE_MOTION_MAGIC_KI = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KD = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KV = 0.12;
+    public static final double CAGE_MOTION_MAGIC_KS = 0.25;
+    public static final double CAGE_MOTION_MAGIC_KA = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KG = 0.0;
+    
+    // Cage Motor Speeds
+    public static final double CAGE_SPIN_SPEED = 1.0; // Full speed - changeable
+    public static final double CAGE_STOP = 0.0;
+    
+    // Cage Motor Current Limits
+    public static final double CAGE_SUPPLY_CURRENT_LIMIT = 30.0; // Amps
+    public static final double CAGE_STATOR_CURRENT_LIMIT = 60.0; // Amps
+    */
 
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 2;
-    public static final double Y_REEF_ALIGNMENT_P = 3;
-    public static final double ROT_REEF_ALIGNMENT_P = 0.04;
+    public static final double X_REEF_ALIGNMENT_P = 0.5;
+    public static final double Y_REEF_ALIGNMENT_P = 0.5;
+    public static final double ROT_REEF_ALIGNMENT_P = 0.09;
   
     // RIGHT CAMERA SETPOINTS (limelight-right)
-    public static final double ROT_SETPOINT_REEF_ALIGNMENT_RIGHT = -13;
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_RIGHT = 60;//-13;
     public static final double ROT_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
-    public static final double X_SETPOINT_REEF_ALIGNMENT_RIGHT = -0.4;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_RIGHT = 0.2;
     public static final double X_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
-    public static final double Y_SETPOINT_REEF_ALIGNMENT_RIGHT = 0.33; // Always positive - sign determined by isRightScore
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_RIGHT = -0.30; // Always positive - sign determined by isRightScore
     public static final double Y_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
     
     // LEFT CAMERA SETPOINTS (limelight-left)  
-    public static final double ROT_SETPOINT_REEF_ALIGNMENT_LEFT = 0.3;
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_LEFT = -82;
     public static final double ROT_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
-    public static final double X_SETPOINT_REEF_ALIGNMENT_LEFT = -0.35;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_LEFT = 0.2;
     public static final double X_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
-    public static final double Y_SETPOINT_REEF_ALIGNMENT_LEFT = 0.1; // Base Y setpoint for left camera
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_LEFT = -0.12; // Base Y setpoint for left camera
     public static final double Y_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
     
     // SPECIAL CROSS-CAMERA OFFSET: Right alignment using left camera
-    public static final double Y_OFFSET_RIGHT_ALIGN_ON_LEFT_CAMERA = 0.5; // Additional offset when aligning right with left camera
+    public static final double Y_OFFSET_RIGHT_ALIGN_ON_LEFT_CAMERA = 0.2; // Additional offset when aligning right with left camera
     
     // NEW: Algae kicker specific alignment offset
-    public static final double Y_OFFSET_ALGAE_KICKER = 0.5; // Y offset specifically for algae kicking alignment (adjustable)
+    public static final double Y_OFFSET_ALGAE_KICKER = 0.23; // Y offset for algae alignment (0.0 = center, adjust as needed)
 
     public static final double DONT_SEE_TAG_WAIT_TIME = 1;
     public static final double POSE_VALIDATION_TIME = 1;

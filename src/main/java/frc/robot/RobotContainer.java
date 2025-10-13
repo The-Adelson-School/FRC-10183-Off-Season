@@ -8,6 +8,7 @@ import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
@@ -58,9 +59,10 @@ public class RobotContainer
   /**
    * Converts driver input into a field-relative ChassisSpeeds that is controlled by angular velocity.
    */
+  //teleop driver control
   SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
-                                                                () -> driverXbox.getLeftY() * -1,
-                                                                () -> driverXbox.getLeftX() * -1)
+                                                                () -> driverXbox.getLeftX() * -1,
+                                                                () -> driverXbox.getLeftY() * 1)
                                                             .withControllerRotationAxis(() -> driverXbox.getRightX() * -1)
                                                             .deadband(OperatorConstants.DEADBAND)
                                                             .scaleTranslation(1.0)
@@ -120,6 +122,46 @@ public class RobotContainer
     NamedCommands.registerCommand("ReefTagIntake", reefTagIntakeSequence());
     NamedCommands.registerCommand("TestCommand", new InstantCommand(() -> System.out.println("Test!")));
     NamedCommands.registerCommand("ReefTagIntakeStage1", reefTagIntakeStage1Command());
+    
+    // Elevator Position Commands for PathPlanner
+    NamedCommands.registerCommand("STOWED_LEVEL", createStowedLevelCommand());
+    NamedCommands.registerCommand("ALGAE_POSITION_A", createAlgaePositionACommand());
+    NamedCommands.registerCommand("ALGAE_POSITION_B", createAlgaePositionBCommand());
+    NamedCommands.registerCommand("LEVEL_ONE", createLevelOneCommand());
+    NamedCommands.registerCommand("LEVEL_TWO", createLevelTwoCommand());
+    NamedCommands.registerCommand("LEVEL_THREE", createLevelThreeCommand());
+    
+    // Shooter Commands for PathPlanner
+    NamedCommands.registerCommand("ALGAE_SHOOTER", createAlgaeShooterCommand());
+    NamedCommands.registerCommand("SHOOTER", createShooterCommand());
+    
+    // SEPARATED: Individual Motor Control Commands for PathPlanner
+    NamedCommands.registerCommand("START SHOOTER", createDirectStartShooterCommand());
+    NamedCommands.registerCommand("STOP SHOOTER", createDirectStopShooterCommand());
+    NamedCommands.registerCommand("RUN INTAKE 2 SECONDS", createRunIntake2SecondsCommand());
+    
+    // Legacy combined command (now just starts shooter)
+    
+    // Auto-Alignment Commands for PathPlanner
+    NamedCommands.registerCommand("AUTO_ALIGN_LEFT", createAutoAlignLeftCommand());
+    NamedCommands.registerCommand("AUTO_ALIGN_RIGHT", createAutoAlignRightCommand());
+    
+    System.out.println("PathPlanner Named Commands Registered:");
+    System.out.println("- STOWED_LEVEL: Move elevator to stowed/home position");
+    System.out.println("- ALGAE_POSITION_A: Move elevator to algae position A");
+    System.out.println("- ALGAE_POSITION_B: Move elevator to algae position B");
+    System.out.println("- LEVEL_ONE: Move elevator to level 1");
+    System.out.println("- LEVEL_TWO: Move elevator to level 2");
+    System.out.println("- LEVEL_THREE: Move elevator to level 3");
+    System.out.println("- ALGAE_SHOOTER: Run algae kicker for 1 second");
+    System.out.println("- SHOOTER: Run shooter for 1 second");
+    System.out.println("- START SHOOTER: Start shooter only (STOWED level only)");
+    System.out.println("- STOP SHOOTER: Stop shooter only");  
+    System.out.println("- RUN INTAKE 2 SECONDS: Run intake for exactly 2 seconds (any level)");
+    System.out.println("- START SHOOTER AND INTAKE: Legacy - same as START SHOOTER");
+    System.out.println("- STOP SHOOTER AND INTAKE: Legacy - same as STOP SHOOTER");
+    System.out.println("- AUTO_ALIGN_LEFT: Auto-align to AprilTag using left camera priority");
+    System.out.println("- AUTO_ALIGN_RIGHT: Auto-align to AprilTag using right camera priority");
   }
 
   /**
@@ -150,7 +192,7 @@ public class RobotContainer
       drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity);
     }
 
-     if (Robot.isSimulation())
+    if (RobotBase.isSimulation())
     {
       driveDirectAngleKeyboard.driveToPose(() -> new Pose2d(new Translation2d(9, 3),
                                                             Rotation2d.fromDegrees(90)),
@@ -177,7 +219,6 @@ public class RobotContainer
       drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity); // Overrides drive command above!
 
       driverXbox.x().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
-      driverXbox.y().whileTrue(drivebase.driveToDistanceCommand(1.0, 0.2));
       driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
       driverXbox.back().whileTrue(drivebase.centerModulesCommand());
       driverXbox.leftBumper().onTrue(Commands.none());
@@ -189,68 +230,74 @@ public class RobotContainer
       // Driver controls (moved from operator)
       driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
       
-      // X button - FIXED: Algae kicking sequence with tag-based elevator positioning
+      // X button - Dynamic algae autoalign with SWAPPED tag-based elevator positioning (RIGHT camera priority) - WITH DRIVER OVERRIDE
       driverXbox.x().onTrue(
         new ParallelCommandGroup(
-          // Align with algae-specific offset, prioritizing left limelight
-          new AlignToReefTagRelative(false, drivebase, true, true), // false = center, true = force left camera, true = algae mode
-          // Sequential elevator and algae kicker operations (no subsystem conflict)
-          new SequentialCommandGroup(
-            // Start algae kicker immediately
-            Commands.runOnce(() -> elevator.startAlgaeKicker(), elevator),
-            Commands.waitUntil(() -> {
-              // Wait for alignment to start and detect a tag
-              return !drivebase.getPose().equals(new Pose2d());
-            }),
-            // Move elevator to position based on detected tag
-            Commands.runOnce(() -> {
-              // Get the detected tag ID from the alignment command
-              double detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-left");
-              
-              // If left camera doesn't see a tag, try right camera
-              if (detectedTagID <= 0) {
-                detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-right");
-              }
-              
-              // Position A tags: 17, 11, 7, 21, 9, 19
+          // Autoalign with RIGHT camera priority for algae mode - INCLUDES DRIVER OVERRIDE DETECTION
+          new AlignToReefTagRelative(false, drivebase, false, true, // algae mode = true uses RIGHT camera priority
+                                   () -> driverXbox.getLeftY(),  // CRITICAL: Driver Y input for override detection
+                                   () -> driverXbox.getLeftX(),  // CRITICAL: Driver X input for override detection 
+                                   () -> driverXbox.getRightX(), // CRITICAL: Driver rotation input for override detection
+                                   null), // No auto-shooter for algae mode
+          // Dynamic elevator positioning based on detected tag + algae kicker - SWAPPED LOGIC
+          Commands.run(() -> {
+            // Start algae kicker immediately if not already running
+            elevator.startAlgaeKicker();
+            
+            // Continuously check for tag ID from both cameras, prioritizing right camera
+            double detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-right");
+            
+            // If right camera doesn't see a tag, try left camera as fallback
+            if (detectedTagID <= 0) {
+              detectedTagID = frc.robot.LimelightHelpers.getFiducialID("limelight-left");
+            }
+            
+            // Only move elevator if we actually see a tag
+            if (detectedTagID > 0) {
+              // SWAPPED LOGIC: Position A tags (17,11,7,21,9,19) now go to Position B
               if (detectedTagID == 17 || detectedTagID == 11 || detectedTagID == 7 ||
                   detectedTagID == 21 || detectedTagID == 9 || detectedTagID == 19) {
-                elevator.goToAlgaePositionA();
-                System.out.println("ALGAE KICKING: Detected Position A tag " + detectedTagID + " - Moving to Algae Position A");
+                
+                // Only move to Position B if not already there (CHANGED from Position A)
+                if (!elevator.isElevatorAtAlgaePositionB()) {
+                  elevator.goToAlgaePositionB();
+                  System.out.println("X BUTTON: Detected Position A tag " + detectedTagID + " - Moving elevator to Position B (SWAPPED)");
+                }
               }
-              // Position B tags: 18, 7, 22, 6, 8, 20
-              else if (detectedTagID == 18 || detectedTagID == 7 || detectedTagID == 22 ||
-                       detectedTagID == 6 || detectedTagID == 8 || detectedTagID == 20) {
-                elevator.goToAlgaePositionB();
-                System.out.println("ALGAE KICKING: Detected Position B tag " + detectedTagID + " - Moving to Algae Position B");
-              }
-              // Unknown tag - default to Position A
+              // All other tags now go to Position A (CHANGED from Position B)
               else {
-                elevator.goToAlgaePositionA();
-                System.out.println("ALGAE KICKING: Unknown/No tag detected (" + detectedTagID + ") - Defaulting to Algae Position A");
+                // Only move to Position A if not already there (CHANGED from Position B)
+                if (!elevator.isElevatorAtAlgaePositionA()) {
+                  elevator.goToAlgaePositionA();
+                  System.out.println("X BUTTON: Detected other tag " + detectedTagID + " - Moving elevator to Position A (SWAPPED)");
+                }
               }
-              
-              // Update SmartDashboard with tag detection info
-              edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Algae Detected Tag ID", detectedTagID);
-              edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putString("Algae Elevator Position", 
-                (detectedTagID == 17 || detectedTagID == 11 || detectedTagID == 7 ||
-                 detectedTagID == 21 || detectedTagID == 9 || detectedTagID == 19) ? "Position A" :
-                (detectedTagID == 18 || detectedTagID == 7 || detectedTagID == 22 ||
-                 detectedTagID == 6 || detectedTagID == 8 || detectedTagID == 20) ? "Position B" : "Position A (Default)");
-            }, elevator),
-            // Wait for elevator to reach target position
-            Commands.waitUntil(() -> {
-              // Check if we're at either algae position
-              return elevator.isElevatorAtAlgaePositionA() || elevator.isElevatorAtAlgaePositionB();
-            })
-          )
+            }
+            
+          }, elevator)  // Single command requiring elevator subsystem
         )
         .finallyDo((interrupted) -> {
-          // Stop algae kicker when command ends (whether completed or interrupted)
+          // Stop algae kicker when command ends (including driver override cancellation)
           elevator.stopAlgaeKicker();
+          if (interrupted) {
+            System.out.println("X BUTTON ALGAE SEQUENCE ENDED: " + (interrupted ? "Cancelled by driver" : "Completed"));
+          }
         })
-        .withName("X_AlgaeKick_TagBasedElevator_LeftCameraPriority")
+        .withName("X_AlgaeAlign_SwappedTagBasedElevator_WithDriverOverride")
       );
+      
+      // Y button - CHANGED: Direct shooter control at 0.5 power while held
+      driverXbox.y()
+        .whileTrue(new InstantCommand(() -> {
+          // Set shooter to 0.5 power (half speed)
+          elevator.setShooterSpeed(0.5); // Negative for proper direction
+          System.out.println("Y BUTTON: Shooter at 0.5 power");
+        }, elevator))
+        .onFalse(new InstantCommand(() -> {
+          // Stop shooter when Y button is released
+          elevator.setShooterSpeed(0.0);
+          System.out.println("Y BUTTON RELEASED: Shooter stopped");
+        }, elevator));
       
       // B button now controls shooter override in stages 1 and 2 with full power (30A limit)
       driverXbox.b()
@@ -270,62 +317,66 @@ public class RobotContainer
       driverXbox.povUp().onTrue(increaseCommand);
       driverXbox.povDown().onTrue(decreaseCommand);
       
-      // Intake control on left bumper - CHANGED TO STAGE 1 SEQUENCE
+      // Intake control on left bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
       driverXbox.leftBumper().onTrue(
         new ParallelCommandGroup(
-          new AlignToReefTagRelative(false, drivebase), // LEFT alignment (false = left side)
+          new AlignToReefTagRelative(false, drivebase, false, false, 
+                                   () -> driverXbox.getLeftY(), 
+                                   () -> driverXbox.getLeftX(), 
+                                   () -> driverXbox.getRightX(), 
+                                   elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
-            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1 instead of 2
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE)),
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
-        ).withName("LeftBumper_LeftAlign_Stage1_Shooter")
+        ).withName("LeftBumper_LeftAlign_Stage1_AutoShooter_0.5s")
       );
 
-      // Right bumper - CHANGED TO STAGE 1 SEQUENCE  
+      // Right bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
       driverXbox.rightBumper().onTrue(
         new ParallelCommandGroup(
-          new AlignToReefTagRelative(true, drivebase), // RIGHT alignment (true = right side)
+          new AlignToReefTagRelative(true, drivebase, false, false, 
+                                   () -> driverXbox.getLeftY(), 
+                                   () -> driverXbox.getLeftX(), 
+                                   () -> driverXbox.getRightX(), 
+                                   elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
-            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1 instead of 2
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE)),
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+            Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
-        ).withName("RightBumper_RightAlign_Stage1_Shooter")
+        ).withName("RightBumper_RightAlign_Stage1_AutoShooter_0.5s")
       );
 
       // Reset resistance detection on start button
       driverXbox.start().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
       
-      // Automated sequences on triggers with alignment - CHANGED TO PARALLEL
+      // Automated sequences on triggers with alignment - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
       driverXbox.leftTrigger().onTrue(
         new ParallelCommandGroup(
-          new AlignToReefTagRelative(false, drivebase), // LEFT alignment (false = left side)
+          new AlignToReefTagRelative(false, drivebase, false, false, 
+                                   () -> driverXbox.getLeftY(), 
+                                   () -> driverXbox.getLeftX(), 
+                                   () -> driverXbox.getRightX(), 
+                                   elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO)),
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
-        ).withName("LeftTrigger_LeftAlign_Stage2_Shooter")
+        ).withName("LeftTrigger_LeftAlign_Stage2_AutoShooter_0.5s")
       );
       
       driverXbox.rightTrigger().onTrue(
         new ParallelCommandGroup(
-          new AlignToReefTagRelative(true, drivebase), // RIGHT alignment (true = right side)
+          new AlignToReefTagRelative(true, drivebase, false, false, 
+                                   () -> driverXbox.getLeftY(), 
+                                   () -> driverXbox.getLeftX(), 
+                                   () -> driverXbox.getRightX(), 
+                                   elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
-            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO)),
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_ON)),
-            Commands.waitSeconds(0.5), // Run shooter for 0.5 seconds
-            Commands.runOnce(() -> elevator.setShooterSpeed(ElevatorConstants.SHOOTER_STOP))
+            Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
-        ).withName("RightTrigger_RightAlign_Stage2_Shooter")
+        ).withName("RightTrigger_RightAlign_Stage2_AutoShooter_0.5s")
       );
 
       // Unused buttons for future expansion
@@ -348,8 +399,52 @@ public class RobotContainer
    */
   public Command getAutonomousCommand()
   {
-    // An example command will be run in autonomous
-    return drivebase.getAutonomousCommand("TEST1");
+    // FIXED: Add comprehensive safety checks and initialization delays for autonomous
+    return Commands.sequence(
+      // Step 1: Ensure systems are fully ready
+      Commands.runOnce(() -> System.out.println("AUTONOMOUS: Starting initialization checks...")),
+      
+      // Step 2: Wait for swerve drive to be fully initialized
+      Commands.waitUntil(() -> {
+        try {
+          // Verify swerve drive is responsive
+          drivebase.getPose();
+          drivebase.getHeading();
+          return true;
+        } catch (Exception e) {
+          System.err.println("AUTONOMOUS: Waiting for swerve drive initialization: " + e.getMessage());
+          return false;
+        }
+      }).withTimeout(3.0), // Max 3 seconds wait
+      
+      // Step 3: Additional stabilization delay
+      Commands.waitSeconds(0.5), // Allow systems to stabilize
+      
+      // Step 4: Reset any problematic states
+      Commands.runOnce(() -> {
+        try {
+          // Ensure robot is in a known good state
+          drivebase.drive(new ChassisSpeeds(0, 0, 0)); // Stop any movement
+          System.out.println("AUTONOMOUS: Systems ready, starting path: MIDDLE AUTO TEST");
+        } catch (Exception e) {
+          System.err.println("AUTONOMOUS: Error in state reset: " + e.getMessage());
+        }
+      }),
+      
+      // Step 5: Run the actual autonomous command with error handling
+      drivebase.getAutonomousCommand("RED RIGHT")
+        .handleInterrupt(() -> {
+          drivebase.drive(new ChassisSpeeds(0, 0, 0));
+        })
+        .andThen(Commands.runOnce(() -> {
+          drivebase.drive(new ChassisSpeeds(0, 0, 0));
+        }))
+    )
+    .handleInterrupt(() -> {
+
+      drivebase.drive(new ChassisSpeeds(0, 0, 0));
+    })
+    .withName("SafeAutonomousCommand");
   }
 
   public void setMotorBrake(boolean brake)
@@ -376,4 +471,240 @@ public class RobotContainer
     );
   }
 
+  // NEW: PathPlanner Named Command Factories
+
+  /**
+   * Move elevator to Algae Position A and wait until target is reached
+   */
+  private Command createAlgaePositionACommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.goToAlgaePositionA();
+        System.out.println("PATHPLANNER: Moving elevator to Algae Position A (" + ElevatorConstants.ALGAE_POSITION_A + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtAlgaePositionA()),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Algae Position A"))
+    ).withName("AlgaePositionA");
+  }
+
+  /**
+   * Move elevator to Algae Position B and wait until target is reached
+   */
+  private Command createAlgaePositionBCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.goToAlgaePositionB();
+        System.out.println("PATHPLANNER: Moving elevator to Algae Position B (" + ElevatorConstants.ALGAE_POSITION_B + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtAlgaePositionB()),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Algae Position B"))
+    ).withName("AlgaePositionB");
+  }
+
+  /**
+   * Move elevator to Level One and wait until target is reached
+   */
+  private Command createLevelOneCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.engageStage(1);
+        System.out.println("PATHPLANNER: Moving elevator to Level One (" + ElevatorConstants.LEVEL_ONE + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE)),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Level One"))
+    ).withName("LevelOne");
+  }
+
+  /**
+   * Move elevator to Level Two and wait until target is reached
+   */
+  private Command createLevelTwoCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.engageStage(2);
+        System.out.println("PATHPLANNER: Moving elevator to Level Two (" + ElevatorConstants.LEVEL_TWO + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO)),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Level Two"))
+    ).withName("LevelTwo");
+  }
+
+  /**
+   * Move elevator to Level Three and wait until target is reached
+   */
+  private Command createLevelThreeCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.engageStage(3);
+        System.out.println("PATHPLANNER: Moving elevator to Level Three (" + ElevatorConstants.LEVEL_THREE + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_THREE)),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Level Three"))
+    ).withName("LevelThree");
+  }
+
+  /**
+   * Move elevator to Stowed Level (stage 0) and wait until target is reached
+   */
+  private Command createStowedLevelCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.engageStage(0);
+        System.out.println("PATHPLANNER: Moving elevator to Stowed Level (" + ElevatorConstants.STOWED_LEVEL + " counts)");
+      }, elevator),
+      Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.STOWED_LEVEL)),
+      Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Stowed Level"))
+    ).withName("StowedLevel");
+  }
+
+  /**
+   * Run algae kicker for 1 second
+   */
+  private Command createAlgaeShooterCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.startAlgaeKicker();
+      }, elevator),
+      Commands.waitSeconds(1.0),
+      Commands.runOnce(() -> {
+        elevator.stopAlgaeKicker();
+      }, elevator)
+    ).withName("AlgaeShooter1Sec");
+  }
+
+  /**
+   * Run shooter for 1 second
+   */
+  private Command createShooterCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.setShooterSpeed(-1.0); // Full power reverse
+        System.out.println("PATHPLANNER: Starting shooter for 1 second");
+      }, elevator),
+      Commands.waitSeconds(1.0),
+      Commands.runOnce(() -> {
+        elevator.setShooterSpeed(0.0); // Stop shooter
+        System.out.println("PATHPLANNER: Shooter stopped after 1 second");
+      }, elevator)
+    ).withName("Shooter1Sec");
+  }
+
+  /**
+   * Auto-align to AprilTag using left camera priority (for autonomous)
+   */
+  private Command createAutoAlignLeftCommand() {
+    return new AlignToReefTagRelative(
+      false,           // isRightScore = false (left alignment)
+      drivebase,       // SwerveSubsystem
+      false,           // forceLeftCameraPriority = false (will use left camera based on isRightScore)
+      false,           // isAlgaeKickingMode = false (normal scoring mode)
+      () -> 0.0,       // No driver override in autonomous
+      () -> 0.0,       // No driver override in autonomous
+      () -> 0.0,       // No driver override in autonomous
+      null             // No elevator reference (alignment only, no shooter)
+    ).withName("AutoAlignLeft").withTimeout(5.0); // 5 second timeout for safety
+  }
+
+  /**
+   * Auto-align to AprilTag using right camera priority (for autonomous)
+   */
+  private Command createAutoAlignRightCommand() {
+    return new AlignToReefTagRelative(
+      true,            // isRightScore = true (right alignment)
+      drivebase,       // SwerveSubsystem
+      false,           // forceLeftCameraPriority = false (will use right camera based on isRightScore)
+      false,           // isAlgaeKickingMode = false (normal scoring mode)
+      () -> 0.0,       // No driver override in autonomous
+      () -> 0.0,       // No driver override in autonomous
+      () -> 0.0,       // No driver override in autonomous
+      null             // No elevator reference (alignment only, no shooter)
+    ).withName("AutoAlignRight").withTimeout(5.0); // 5 second timeout for safety
+  }
+
+  // SIMPLIFIED: Direct Motor Control Commands (No Manual Mode Required)
+
+  /**
+   * Start shooter and intake motors directly in autonomous
+   * Safety check: Only works when robot is at STOWED LEVEL (stage 0)
+   * Motors run continuously until stopped by STOP command
+   */
+  private Command createDirectStartShooterIntakeCommand() {
+    return Commands.runOnce(() -> {
+      if (elevator.isAtStowedLevel()) {
+        // Direct motor control - start shooter at full reverse power
+        elevator.setShooterSpeed(-1.0); // Full power reverse for shooting
+        // Direct motor control - start intake outward
+        elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT);
+
+      }
+    }, elevator).withName("DirectStartShooterIntake");
+  }
+
+
+  private Command createDirectStopShooterIntakeCommand() {
+    return Commands.runOnce(() -> {
+      elevator.setShooterSpeed(0.0);
+      elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
+    }, elevator).withName("DirectStopShooterIntake");
+  }
+
+  // SEPARATED: Individual Motor Control Commands
+
+  /**
+   * Start ONLY shooter motor directly in autonomous
+   * Safety check: Only works when robot is at STOWED LEVEL (stage 0)
+   * NO INTAKE - shooter runs continuously until stopped
+   */
+  private Command createDirectStartShooterCommand() {
+    return Commands.runOnce(() -> {
+      if (elevator.isAtStowedLevel()) {
+        elevator.setShooterSpeed(-1.0); // Full power reverse for shooting
+        System.out.println("PATHPLANNER: Starting SHOOTER ONLY at stowed level");
+      } else {
+        System.out.println("PATHPLANNER ERROR: Cannot start shooter - robot not at STOWED LEVEL");
+      }
+    }, elevator).withName("DirectStartShooter");
+  }
+
+  /**
+   * Stop ONLY shooter motor directly in autonomous
+   * Works from any elevator level
+   */
+  private Command createDirectStopShooterCommand() {
+    return Commands.runOnce(() -> {
+      elevator.setShooterSpeed(0.0);
+      System.out.println("PATHPLANNER: Stopping SHOOTER");
+    }, elevator).withName("DirectStopShooter");
+  }
+
+  /**
+   * Run intake motor for EXACTLY 2 seconds then automatically stop
+   * Works from any elevator level - NO restrictions
+   * This is the ONLY way intake runs in autonomous unless manually controlled
+   */
+  private Command createRunIntake2SecondsCommand() {
+    return Commands.sequence(
+      Commands.runOnce(() -> {
+        elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT);
+        System.out.println("PATHPLANNER: Starting intake for 2 seconds");
+      }, elevator),
+      Commands.waitSeconds(2.0),
+      Commands.runOnce(() -> {
+        elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
+        System.out.println("PATHPLANNER: Intake stopped after 2 seconds");
+      }, elevator)
+    ).withName("RunIntake2Seconds");
+  }
+
+  // LEGACY: Keep old combined commands for backward compatibility (but they only affect shooter now)
+  //private Command createDirectStartShooterIntakeCommand() {
+  //  return createDirectStartShooterCommand(); // Just start shooter, NO intake
+  //}
+
+  //private Command createDirectStopShooterIntakeCommand() {
+   // return createDirectStopShooterCommand(); // Just stop shooter, intake handled separately
+ // }
+
 }
+
+

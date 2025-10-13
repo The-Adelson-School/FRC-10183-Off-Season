@@ -12,12 +12,8 @@ import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.VoltageConfigs;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import frc.robot.Constants.ElevatorConstants;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command; 
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
-import edu.wpi.first.networktables.GenericEntry;
 
 public class ElevatorSubsystem extends SubsystemBase {
 
@@ -25,9 +21,18 @@ public class ElevatorSubsystem extends SubsystemBase {
     TalonFX elevMotorFollower;
     TalonFX intakeMotor;
     TalonFX shooterMotor;
-    TalonFX algaeKickerMotor; // NEW: Algae kicker motor
+    TalonFX algaeKickerMotor;
+    // COMMENTED OUT: Cage motors
+    /*
+    TalonFX cageMotor; // NEW: Cage motor
+    TalonFX cageClimbMotor; // NEW: Cage climb motor
+    */
     
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0);
+    // COMMENTED OUT: Cage motion magic request
+    /*
+    private final MotionMagicVoltage cageMotionMagicRequest = new MotionMagicVoltage(0); // NEW: For cage motor
+    */
     
     // Resistance detection - SHOOTER ONLY
     private double shooterHighCurrentStartTime = -1;
@@ -39,22 +44,37 @@ public class ElevatorSubsystem extends SubsystemBase {
     // Manual shooter override
     private boolean manualShooterOverride = false;
     
-    int stage = 0;
+    // Algae mode tracking to disable shooter during algae operations
+    private boolean algaeKickerActive = false;
+
+    // Manual control flags for autonomous
+    private boolean manualShooterControl = false;
+    private boolean manualIntakeControl = false;
+    private boolean manualShooterState = false;
+    private boolean manualIntakeState = false;
     
-    // Shuffleboard for current monitoring
-    private final ShuffleboardTab currentTab = Shuffleboard.getTab("Current Monitoring");
-    private final GenericEntry shooterCurrentEntry = currentTab.add("Shooter Current (A)", 0.0).getEntry();
-    private final GenericEntry shooterCurrentGraphEntry = currentTab.add("Shooter Current Graph", 0.0)
-        .withWidget("Graph")
-        .withSize(4, 3)
-        .getEntry();
+    // COMMENTED OUT: Cage Motor State Tracking
+    /*
+    private boolean cageMotorSpinning = false;
+    private double cageHighCurrentStartTime = -1;
+    private boolean cageResistanceDetected = false;
+    private boolean cageRotationComplete = false;
+    private double cageStartPosition = 0.0;
+    */
+    
+    int stage = 0;
     
     public ElevatorSubsystem(int elevLeaderID, int elevFollowerID, int intakeID, int shooterID, int algaeKickerID){
         elevMotorLeader = new TalonFX(elevLeaderID, "CANivore");
         elevMotorFollower = new TalonFX(elevFollowerID, "CANivore");
         intakeMotor = new TalonFX(intakeID, "CANivore");
         shooterMotor = new TalonFX(shooterID, "CANivore");
-        algaeKickerMotor = new TalonFX(algaeKickerID, "CANivore"); // NEW: Initialize algae kicker
+        algaeKickerMotor = new TalonFX(algaeKickerID, "CANivore");
+        // COMMENTED OUT: Cage motor initialization
+        /*
+        cageMotor = new TalonFX(ElevatorConstants.CAGE_MOTOR_ID, "CANivore"); // NEW
+        cageClimbMotor = new TalonFX(ElevatorConstants.CAGE_CLIMB_ID, "CANivore"); // NEW
+        */
         
         configureMotionMagic();
         
@@ -62,7 +82,12 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotorFollower.setNeutralMode(NeutralModeValue.Brake);
         intakeMotor.setNeutralMode(NeutralModeValue.Brake);
         shooterMotor.setNeutralMode(NeutralModeValue.Brake);
-        algaeKickerMotor.setNeutralMode(NeutralModeValue.Brake); // NEW: Set brake mode
+        algaeKickerMotor.setNeutralMode(NeutralModeValue.Brake);
+        // COMMENTED OUT: Cage motor brake mode
+        /*
+        cageMotor.setNeutralMode(NeutralModeValue.Brake); // NEW
+        cageClimbMotor.setNeutralMode(NeutralModeValue.Brake); // NEW
+        */
         
         // Follower motor follows leader
         elevMotorFollower.setControl(new Follower(elevLeaderID, false));
@@ -71,7 +96,12 @@ public class ElevatorSubsystem extends SubsystemBase {
         elevMotorFollower.setPosition(0);
         intakeMotor.setPosition(0);
         shooterMotor.setPosition(0);
-        algaeKickerMotor.setPosition(0); // NEW: Reset position
+        algaeKickerMotor.setPosition(0);
+        // COMMENTED OUT: Cage motor position reset
+        /*
+        cageMotor.setPosition(0); // NEW
+        cageClimbMotor.setPosition(0); // NEW
+        */
     }
     
     private void configureMotionMagic() {
@@ -109,18 +139,18 @@ public class ElevatorSubsystem extends SubsystemBase {
         CurrentLimitsConfigs intakeCurrentConfig = intakeConfig.CurrentLimits;
         intakeCurrentConfig.withSupplyCurrentLimitEnable(true);
         intakeCurrentConfig.withStatorCurrentLimitEnable(true);
-        intakeCurrentConfig.withSupplyCurrentLimit(30.0);  // 30A supply limit
-        intakeCurrentConfig.withStatorCurrentLimit(60.0);  // 60A stator limit
+        intakeCurrentConfig.withSupplyCurrentLimit(30.0);
+        intakeCurrentConfig.withStatorCurrentLimit(60.0);
         
         intakeMotor.getConfigurator().apply(intakeConfig);
         
-        // Configuration for shooter motor (30A supply, 35A stator) - INCREASED FOR B BUTTON
+        // Configuration for shooter motor (30A supply, 35A stator)
         TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
         CurrentLimitsConfigs shooterCurrentConfig = shooterConfig.CurrentLimits;
         shooterCurrentConfig.withSupplyCurrentLimitEnable(true);
         shooterCurrentConfig.withStatorCurrentLimitEnable(true);
-        shooterCurrentConfig.withSupplyCurrentLimit(30.0);  // 30A supply limit (increased from 8A)
-        shooterCurrentConfig.withStatorCurrentLimit(35.0);  // 35A stator limit
+        shooterCurrentConfig.withSupplyCurrentLimit(30.0);
+        shooterCurrentConfig.withStatorCurrentLimit(35.0);
         
         shooterMotor.getConfigurator().apply(shooterConfig);
         
@@ -129,10 +159,50 @@ public class ElevatorSubsystem extends SubsystemBase {
         CurrentLimitsConfigs algaeKickerCurrentConfig = algaeKickerConfig.CurrentLimits;
         algaeKickerCurrentConfig.withSupplyCurrentLimitEnable(true);
         algaeKickerCurrentConfig.withStatorCurrentLimitEnable(true);
-        algaeKickerCurrentConfig.withSupplyCurrentLimit(30.0);  // 30A supply limit
-        algaeKickerCurrentConfig.withStatorCurrentLimit(60.0);  // 60A stator limit
+        algaeKickerCurrentConfig.withSupplyCurrentLimit(30.0);
+        algaeKickerCurrentConfig.withStatorCurrentLimit(60.0);
         
         algaeKickerMotor.getConfigurator().apply(algaeKickerConfig);
+
+        // COMMENTED OUT: Configuration for cage motors
+        /*
+        // NEW: Configuration for cage motor with Motion Magic
+        TalonFXConfiguration cageConfig = new TalonFXConfiguration();
+        
+        // Motion Magic configuration for cage motor
+        MotionMagicConfigs cageMotionMagicConfigs = cageConfig.MotionMagic;
+        cageMotionMagicConfigs.MotionMagicCruiseVelocity = ElevatorConstants.CAGE_MOTION_MAGIC_CRUISE_VELOCITY;
+        cageMotionMagicConfigs.MotionMagicAcceleration = ElevatorConstants.CAGE_MOTION_MAGIC_ACCELERATION;
+        
+        // PID configuration for cage motor
+        Slot0Configs cageSlot0Configs = cageConfig.Slot0;
+        cageSlot0Configs.kP = ElevatorConstants.CAGE_MOTION_MAGIC_KP;
+        cageSlot0Configs.kI = ElevatorConstants.CAGE_MOTION_MAGIC_KI;
+        cageSlot0Configs.kD = ElevatorConstants.CAGE_MOTION_MAGIC_KD;
+        cageSlot0Configs.kV = ElevatorConstants.CAGE_MOTION_MAGIC_KV;
+        cageSlot0Configs.kS = ElevatorConstants.CAGE_MOTION_MAGIC_KS;
+        cageSlot0Configs.kA = ElevatorConstants.CAGE_MOTION_MAGIC_KA;
+        cageSlot0Configs.kG = ElevatorConstants.CAGE_MOTION_MAGIC_KG;
+        
+        // Current limits for cage motor
+        CurrentLimitsConfigs cageCurrentConfig = cageConfig.CurrentLimits;
+        cageCurrentConfig.withSupplyCurrentLimitEnable(true);
+        cageCurrentConfig.withStatorCurrentLimitEnable(true);
+        cageCurrentConfig.withSupplyCurrentLimit(ElevatorConstants.CAGE_SUPPLY_CURRENT_LIMIT);
+        cageCurrentConfig.withStatorCurrentLimit(ElevatorConstants.CAGE_STATOR_CURRENT_LIMIT);
+        
+        cageMotor.getConfigurator().apply(cageConfig);
+        
+        // Configuration for cage climb motor (same current limits, no Motion Magic needed)
+        TalonFXConfiguration cageClimbConfig = new TalonFXConfiguration();
+        CurrentLimitsConfigs cageClimbCurrentConfig = cageClimbConfig.CurrentLimits;
+        cageClimbCurrentConfig.withSupplyCurrentLimitEnable(true);
+        cageClimbCurrentConfig.withStatorCurrentLimitEnable(true);
+        cageClimbCurrentConfig.withSupplyCurrentLimit(ElevatorConstants.CAGE_SUPPLY_CURRENT_LIMIT);
+        cageClimbCurrentConfig.withStatorCurrentLimit(ElevatorConstants.CAGE_STATOR_CURRENT_LIMIT);
+        
+        cageClimbMotor.getConfigurator().apply(cageClimbConfig);
+        */
     }
 
     public int getStage(){
@@ -142,8 +212,6 @@ public class ElevatorSubsystem extends SubsystemBase {
     private void goToHeight(int elevSetpoint) {
         double targetRotations = (double)elevSetpoint / ElevatorConstants.COUNTS_PER_ROTATION;
         elevMotorLeader.setControl(motionMagicRequest.withPosition(targetRotations));
-        SmartDashboard.putNumber("Elevator Target Rotations", targetRotations);
-        SmartDashboard.putNumber("Elevator Target Counts", elevSetpoint);
     }
     
     public boolean isElevatorAtTarget(int targetCounts, double tolerance) {
@@ -156,16 +224,18 @@ public class ElevatorSubsystem extends SubsystemBase {
     }
 
     public void setIntakeSpeed(double speed) {
-        // In stages 1 and 2, allow manual control
-        // In stage 0, this method is overridden by periodic() for automatic control
         if (stage != 0) {
             intakeMotor.set(speed);
         }
-        // Stage 0 intake control is handled in periodic() method automatically
     }
     
     public void setShooterSpeed(double speed) {
-        // Resistance detection only in stage 0
+        if (speed != 0.0) {
+            shooterMotor.setNeutralMode(NeutralModeValue.Coast);
+        } else {
+            shooterMotor.setNeutralMode(NeutralModeValue.Brake);
+        }
+        
         if (stage == 0 && shooterResistanceDetected) {
             shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
         } else {
@@ -173,15 +243,12 @@ public class ElevatorSubsystem extends SubsystemBase {
         }
     }
     
-    /**
-     * Set manual shooter override (for A button control)
-     */
     public void setManualShooterOverride(boolean override) {
         this.manualShooterOverride = override;
     }
 
     public void increaseStage(){
-        if(stage < 3){ // NEW: Allow stage 3
+        if(stage < 3){
             stage++;
             engageStage();
         }
@@ -200,10 +267,8 @@ public class ElevatorSubsystem extends SubsystemBase {
     
     public void engageStage(int targetStage) {
         int previousStage = stage;
-        stage = Math.max(0, Math.min(3, targetStage)); // Allow stage 3 (0-3 range)
-        SmartDashboard.putNumber("Stage", stage);
+        stage = Math.max(0, Math.min(3, targetStage));
         
-        // Reset resistance detection when leaving stage 0
         if (previousStage == 0 && stage != 0) {
             resetResistanceDetection();
         }
@@ -222,18 +287,14 @@ public class ElevatorSubsystem extends SubsystemBase {
         }
     }
     
-    // NEW: Algae-specific elevator positions
     public void goToAlgaePositionA() {
         goToHeight(ElevatorConstants.ALGAE_POSITION_A);
-        SmartDashboard.putString("Elevator Special Position", "Algae Position A");
     }
     
     public void goToAlgaePositionB() {
         goToHeight(ElevatorConstants.ALGAE_POSITION_B);
-        SmartDashboard.putString("Elevator Special Position", "Algae Position B");
     }
     
-    // NEW: Check if elevator is at algae positions
     public boolean isElevatorAtAlgaePositionA() {
         return isElevatorAtTarget(ElevatorConstants.ALGAE_POSITION_A);
     }
@@ -266,104 +327,356 @@ public class ElevatorSubsystem extends SubsystemBase {
         ).withName("ElevatorAutonomous");
     }
 
-    // NEW: Algae kicker control methods
     public void setAlgaeKickerSpeed(double speed) {
         algaeKickerMotor.set(speed);
+        
+        boolean wasActive = algaeKickerActive;
+        algaeKickerActive = (speed != 0.0);
+        
+        if (algaeKickerActive && !wasActive) {
+            setShooterBrakeMode(true);
+            shooterMotor.set(0.0);
+            System.out.println("ALGAE KICKER ACTIVATED: Shooter FORCED to BRAKE MODE");
+        } else if (!algaeKickerActive && wasActive) {
+            System.out.println("ALGAE KICKER DEACTIVATED: Shooter can resume normal operations");
+        }
     }
     
     public void startAlgaeKicker() {
         setAlgaeKickerSpeed(ElevatorConstants.ALGAE_KICKER_ON);
+        System.out.println("ALGAE KICKER STARTED");
     }
     
     public void stopAlgaeKicker() {
         setAlgaeKickerSpeed(ElevatorConstants.ALGAE_KICKER_STOP);
+        System.out.println("ALGAE KICKER STOPPED");
     }
+    
+    public boolean isAlgaeKickerActive() {
+        return algaeKickerActive;
+    }
+    
+    public void setShooterBrakeMode(boolean brake) {
+        if (brake) {
+            shooterMotor.setNeutralMode(NeutralModeValue.Brake);
+            System.out.println("SHOOTER: Set to BRAKE mode");
+        } else {
+            shooterMotor.setNeutralMode(NeutralModeValue.Coast);
+            System.out.println("SHOOTER: Set to COAST mode");
+        }
+    }
+    
+    public void lockShooterPosition() {
+        setShooterBrakeMode(true);
+        shooterMotor.set(0.0);
+        System.out.println("SHOOTER LOCKED");
+    }
+    
+    public void releaseShooterLock() {
+        setShooterBrakeMode(false);
+        System.out.println("SHOOTER RELEASED");
+    }
+
+    public void enableManualShooterIntakeControl() {
+        manualShooterControl = true;
+        manualIntakeControl = true;
+        manualShooterState = false;
+        manualIntakeState = false;
+        System.out.println("AUTONOMOUS: Manual shooter/intake control ENABLED");
+    }
+    
+    public void disableManualShooterIntakeControl() {
+        manualShooterControl = false;
+        manualIntakeControl = false;
+        manualShooterState = false;
+        manualIntakeState = false;
+        System.out.println("AUTONOMOUS: Manual shooter/intake control DISABLED");
+    }
+    
+    public void startShooterAndIntakeManual() {
+        if (manualShooterControl && manualIntakeControl) {
+            if (isAtStowedLevel()) {
+                manualShooterState = true;
+                manualIntakeState = true;
+                System.out.println("AUTONOMOUS: Started shooter and intake (manual control)");
+            } else {
+                System.out.println("AUTONOMOUS WARNING: Cannot start shooter/intake - robot not at STOWED LEVEL");
+            }
+        } else {
+            System.out.println("AUTONOMOUS ERROR: Manual control not enabled");
+        }
+    }
+    
+    public void stopShooterAndIntakeManual() {
+        if (manualShooterControl && manualIntakeControl) {
+            manualShooterState = false;
+            manualIntakeState = false;
+            System.out.println("AUTONOMOUS: Stopped shooter and intake (manual control)");
+        } else {
+            System.out.println("AUTONOMOUS ERROR: Manual control not enabled");
+        }
+    }
+    
+    public boolean isAtStowedLevel() {
+        return stage == 0 && isElevatorAtTarget(ElevatorConstants.STOWED_LEVEL);
+    }
+    
+    public boolean isManualControlEnabled() {
+        return manualShooterControl && manualIntakeControl;
+    }
+
+    // COMMENTED OUT: Cage Motor Control Methods
+    /*
+    public void startCageMotorSpin() {
+        if (!cageMotorSpinning && !cageResistanceDetected && cageRotationComplete) {
+            cageMotorSpinning = true;
+            cageResistanceDetected = false;
+            cageHighCurrentStartTime = -1;
+            cageRotationComplete = false;
+            cageMotor.set(ElevatorConstants.CAGE_SPIN_SPEED);
+            System.out.println("CAGE MOTOR: Started spinning at full speed");
+        }
+    }
+    
+    public void stopCageMotor() {
+        cageMotorSpinning = false;
+        cageResistanceDetected = false;
+        cageHighCurrentStartTime = -1;
+        cageMotor.set(ElevatorConstants.CAGE_STOP);
+        System.out.println("CAGE MOTOR: Stopped");
+    }
+    
+    public void setCageClimbSpeed(double speed) {
+        cageClimbMotor.set(speed);
+    }
+    
+    public double getCageMotorCurrent() {
+        return cageMotor.getSupplyCurrent().getValueAsDouble();
+    }
+    
+    public boolean isCageMotorSpinning() {
+        return cageMotorSpinning;
+    }
+    
+    public boolean isCageResistanceDetected() {
+        return cageResistanceDetected;
+    }
+    
+    public boolean isCageRotationComplete() {
+        return cageRotationComplete;
+    }
+    */
 
     @Override
     public void periodic() {
-        // Shooter control logic based on stage and manual override
         boolean shooterShouldRun = false;
         
-        if (stage == 0) {
-            // Stage 0: Run continuously unless resistance detected
-            shooterShouldRun = true;
+        if (algaeKickerActive) {
+            shooterShouldRun = false;
+            shooterMotor.setNeutralMode(NeutralModeValue.Brake);
+            shooterMotor.set(0.0);
+            shooterResistanceDetected = false;
+            return;
         } else {
-            // Stages 1 and 2: Only run when manual override is active (B button pressed)
-            if (manualShooterOverride) {
-                shooterShouldRun = true;
+            if (manualShooterControl) {
+                shooterShouldRun = manualShooterState;
+            } else {
+                if (stage == 0) {
+                    shooterShouldRun = true;
+                } else {
+                    if (manualShooterOverride) {
+                        shooterShouldRun = true;
+                    }
+                }
             }
-            // Otherwise shooter stays OFF in stages 1 and 2
         }
         
-        // Update resistance detection when shooter should be running
-        if (shooterShouldRun) {
+        if (shooterShouldRun && !algaeKickerActive) {
             updateCurrentDetection();
         } else {
-            // Reset resistance detection when shooter shouldn't be running
             shooterResistanceDetected = false;
         }
         
-        // Apply resistance detection - motors turn off if resistance detected
-        if (shooterShouldRun && !shooterResistanceDetected) {
-            // Should run and no resistance - turn motors ON
+        if (shooterShouldRun && !shooterResistanceDetected && !algaeKickerActive) {
+            shooterMotor.setNeutralMode(NeutralModeValue.Coast);
             shooterMotor.set(ElevatorConstants.SHOOTER_ON);
+            
+            // FIXED: Handle intake in stage 0 (stowed level)
             if (stage == 0) {
-                intakeMotor.set(ElevatorConstants.INTAKE_OUT); // Intake only runs automatically in stage 0
+                // ALWAYS spin intake in stowed level during teleop (not autonomous)
+                if (!manualIntakeControl) {
+                    intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                    System.out.println("TELEOP: Intake spinning automatically in stowed level");
+                } else {
+                    // Manual control active (autonomous mode)
+                    if (manualIntakeState) {
+                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                    } else {
+                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                    }
+                }
+            } else {
+                // For stages 1, 2, 3 - only manual control
+                if (manualIntakeControl) {
+                    if (manualIntakeState) {
+                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                    } else {
+                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                    }
+                } else {
+                    // No automatic intake in elevated stages
+                    intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                }
             }
+            
         } else {
-            // Either shouldn't run or resistance detected - turn motors OFF
+            if (!algaeKickerActive) {
+                shooterMotor.setNeutralMode(NeutralModeValue.Brake);
+            }
+            
             shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
+            
+            // FIXED: Handle intake when shooter not running
             if (stage == 0) {
-                intakeMotor.set(ElevatorConstants.INTAKE_STOP); // Stop intake when resistance detected in stage 0
+                // ALWAYS spin intake in stowed level during teleop (not autonomous)
+                if (!manualIntakeControl) {
+                    intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                } else {
+                    // Manual control active (autonomous mode)
+                    if (manualIntakeState) {
+                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                    } else {
+                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                    }
+                }
+            } else {
+                // For stages 1, 2, 3 - only manual control
+                if (manualIntakeControl) {
+                    if (manualIntakeState) {
+                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
+                    } else {
+                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                    }
+                } else {
+                    // No automatic intake in elevated stages
+                    intakeMotor.set(ElevatorConstants.INTAKE_STOP);
+                }
             }
         }
+
+        // COMMENTED OUT: Cage Motor Logic
+        /*
+        if (cageMotorSpinning && !cageResistanceDetected) {
+            updateCageCurrentDetection();
+        }
         
-        SmartDashboard.putNumber("Elevator Leader Position", elevMotorLeader.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Elevator Follower Position", elevMotorFollower.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Intake Position", intakeMotor.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter Position", shooterMotor.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Algae Kicker Position", algaeKickerMotor.getPosition().getValueAsDouble()); // NEW: Dashboard entry
+        // Handle cage motor state transitions
+        if (cageMotorSpinning && cageResistanceDetected && !cageRotationComplete) {
+            // Stop spinning and start controlled rotation
+            cageMotorSpinning = false;
+            cageStartPosition = cageMotor.getPosition().getValueAsDouble();
+            
+            // Calculate target position: current + (degrees / 360) / gear_ratio
+            double targetRotations = cageStartPosition + (ElevatorConstants.CAGE_ROTATION_DEGREES / 360.0) / ElevatorConstants.CAGE_GEAR_RATIO;
+            cageMotor.setControl(cageMotionMagicRequest.withPosition(targetRotations));
+            
+            System.out.println("CAGE MOTOR: Resistance detected, starting " + ElevatorConstants.CAGE_ROTATION_DEGREES + " degree rotation");
+            System.out.println("CAGE MOTOR: From position " + cageStartPosition + " to " + targetRotations);
+        }
         
-        double leaderCurrent = elevMotorLeader.getStatorCurrent().getValueAsDouble();
-        double followerCurrent = elevMotorFollower.getStatorCurrent().getValueAsDouble();
-        double intakeCurrent = intakeMotor.getStatorCurrent().getValueAsDouble();
-        double shooterCurrent = shooterMotor.getStatorCurrent().getValueAsDouble();
-        double algaeKickerCurrent = algaeKickerMotor.getStatorCurrent().getValueAsDouble(); // NEW: Current monitoring
+        // Check if rotation is complete
+        if (cageResistanceDetected && !cageRotationComplete) {
+            double currentPosition = cageMotor.getPosition().getValueAsDouble();
+            double targetPosition = cageStartPosition + (ElevatorConstants.CAGE_ROTATION_DEGREES / 360.0) / ElevatorConstants.CAGE_GEAR_RATIO;
+            
+            if (Math.abs(currentPosition - targetPosition) < 0.02) { // Within 0.02 rotations tolerance
+                cageRotationComplete = true;
+                System.out.println("CAGE MOTOR: " + ElevatorConstants.CAGE_ROTATION_DEGREES + " degree rotation complete");
+            }
+        }
+        */
+    }
+    
+    private void updateCurrentDetection() {
+        double currentTime = Timer.getFPGATimestamp();
+        double shooterCurrent = getShooterCurrent();
+        avgCurrent = shooterCurrent;
         
-        // Create shooter supply current variable and calculate average current
-        double shooterSupplyCurrent = shooterMotor.getSupplyCurrent().getValueAsDouble();
-        avgCurrent = (0.95 * avgCurrent) + (0.05 * shooterSupplyCurrent);
+        if (ElevatorConstants.SHOOTER_CURRENT_THRESHOLD <= 0) {
+            shooterResistanceDetected = false;
+            shooterHighCurrentStartTime = -1;
+            return;
+        }
         
-        SmartDashboard.putNumber("Shooter Supply Current", shooterSupplyCurrent);
-        SmartDashboard.putNumber("Average Current", avgCurrent);
+        if (shooterResistanceDetected) {
+            return;
+        }
         
-        // Update shooter current on Glass for real-time plotting (using actual supply current)
-        shooterCurrentEntry.setDouble(shooterSupplyCurrent);
-        shooterCurrentGraphEntry.setDouble(shooterSupplyCurrent);
-        
-        SmartDashboard.putNumber("Elevator Leader Current", leaderCurrent);
-        SmartDashboard.putNumber("Elevator Follower Current", followerCurrent);
-        SmartDashboard.putNumber("Intake Current", intakeCurrent);
-        SmartDashboard.putNumber("Shooter Current", shooterCurrent);
-        SmartDashboard.putNumber("Algae Kicker Current", algaeKickerCurrent); // NEW: Dashboard entry
-        
-        double totalElevatorCurrent = leaderCurrent + followerCurrent;
-        SmartDashboard.putNumber("Total Elevator Current", totalElevatorCurrent);
-        
-        SmartDashboard.putBoolean("Elevator Leader Current Warning", leaderCurrent > ElevatorConstants.ELEVATOR_SUPPLY_CURRENT_LIMIT * 0.8);
-        SmartDashboard.putBoolean("Elevator Follower Current Warning", followerCurrent > ElevatorConstants.ELEVATOR_SUPPLY_CURRENT_LIMIT * 0.8);
-        
-        SmartDashboard.putBoolean("Shooter Resistance Detected", shooterResistanceDetected && stage == 0);
-        SmartDashboard.putBoolean("Shooter Above Threshold", shooterSupplyCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD);
-        SmartDashboard.putBoolean("Resistance Detection Active", stage == 0);
-        
-        SmartDashboard.putNumber("Elevator Leader Velocity", elevMotorLeader.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("Elevator Leader Error", elevMotorLeader.getClosedLoopError().getValueAsDouble());
-        
-        int currentTarget = getCurrentStageTarget();
-        SmartDashboard.putBoolean("Elevator At Target", isElevatorAtTarget(currentTarget));
+        if (shooterCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD) {
+            if (shooterHighCurrentStartTime < 0) {
+                shooterHighCurrentStartTime = currentTime;
+                System.out.println("HIGH CURRENT TIMER STARTED: " + shooterCurrent + "A");
+            } else {
+                double highCurrentDuration = currentTime - shooterHighCurrentStartTime;
+                
+                if (highCurrentDuration >= ElevatorConstants.CURRENT_DETECTION_TIME) {
+                    shooterResistanceDetected = true;
+                    System.out.println("RESISTANCE DETECTED - Motors LOCKED OFF");
+                }
+            }
+        } else {
+            if (shooterHighCurrentStartTime >= 0) {
+                System.out.println("CURRENT DROPPED TO NORMAL: " + shooterCurrent + "A");
+                shooterHighCurrentStartTime = -1;
+            }
+        }
     }
 
+    // COMMENTED OUT: Cage Motor Current Detection
+    /*
+    private void updateCageCurrentDetection() {
+        double currentTime = Timer.getFPGATimestamp();
+        double cageCurrent = getCageMotorCurrent();
+        
+        if (ElevatorConstants.CAGE_CURRENT_THRESHOLD <= 0) {
+            return; // Disabled
+        }
+        
+        if (cageCurrent > ElevatorConstants.CAGE_CURRENT_THRESHOLD) {
+            if (cageHighCurrentStartTime < 0) {
+                cageHighCurrentStartTime = currentTime;
+                System.out.println("CAGE MOTOR: High current detected: " + cageCurrent + "A - Starting timer");
+            } else {
+                double highCurrentDuration = currentTime - cageHighCurrentStartTime;
+                
+                if (highCurrentDuration >= ElevatorConstants.CAGE_RESISTANCE_TIME) {
+                    cageResistanceDetected = true;
+                    System.out.println("CAGE MOTOR: Resistance confirmed after " + ElevatorConstants.CAGE_RESISTANCE_TIME + " seconds");
+                }
+            }
+        } else {
+            if (cageHighCurrentStartTime >= 0) {
+                System.out.println("CAGE MOTOR: Current dropped to normal: " + cageCurrent + "A - Resetting timer");
+                cageHighCurrentStartTime = -1;
+            }
+        }
+    }
+    */
+    
+    public void resetResistanceDetection() {
+        shooterResistanceDetected = false;
+        shooterHighCurrentStartTime = -1;
+        System.out.println("Resistance detection manually reset");
+    }
+    
+    public double getShooterCurrent() {
+        return shooterMotor.getSupplyCurrent().getValueAsDouble();
+    }
+    
+    public boolean isShooterResistanceDetected() {
+        return shooterResistanceDetected;
+    }
+    
     private int getCurrentStageTarget() {
         switch (stage) {
             case 0: return ElevatorConstants.STOWED_LEVEL;
@@ -377,9 +690,17 @@ public class ElevatorSubsystem extends SubsystemBase {
     public void emergencyStop() {
         elevMotorLeader.set(0);
         intakeMotor.set(0);
+        shooterMotor.setNeutralMode(NeutralModeValue.Brake);
         shooterMotor.set(0);
-        algaeKickerMotor.set(0); // NEW: Stop algae kicker on emergency
+        algaeKickerMotor.set(0);
+        // COMMENTED OUT: Cage motor emergency stop
+        /*
+        cageMotor.set(0); // NEW
+        cageClimbMotor.set(0); // NEW
+        */
+        algaeKickerActive = false;
         resetResistanceDetection();
+        System.out.println("EMERGENCY STOP: All motors stopped");
     }
     
     public Command moveToStageCommand(int targetStage) {
@@ -388,93 +709,5 @@ public class ElevatorSubsystem extends SubsystemBase {
             .withName("MoveToStage" + targetStage);
     }
     
-    // Resistance detection - TIMER-BASED WITH PERSISTENCE (NO GRACE PERIOD)
-    private void updateCurrentDetection() {
-        double currentTime = Timer.getFPGATimestamp();
-        
-        // Use average current instead of instantaneous current
-        double shooterCurrent = avgCurrent;
-        
-        // ENHANCED DEBUG OUTPUT - always show current values
-        SmartDashboard.putNumber("Shooter Supply Current", shooterMotor.getSupplyCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Average Current (Used for Detection)", shooterCurrent);
-        SmartDashboard.putNumber("Current Threshold", ElevatorConstants.SHOOTER_CURRENT_THRESHOLD);
-        SmartDashboard.putBoolean("Current Above Threshold", shooterCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD);
-        SmartDashboard.putNumber("Stage", stage);
-        SmartDashboard.putBoolean("In Stage 0", stage == 0);
-        
-        // Debug console output every 50 loops (~1 second)
-        if ((int)(currentTime * 50) % 50 == 0) {
-            System.out.println(String.format("DEBUG: Stage=%d, AvgCurrent=%.2fA, Threshold=%.2fA, Above=%b, Detected=%b", 
-                stage, shooterCurrent, ElevatorConstants.SHOOTER_CURRENT_THRESHOLD, 
-                shooterCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD, shooterResistanceDetected));
-        }
-        
-        // Only check for resistance if threshold is greater than 0
-        if (ElevatorConstants.SHOOTER_CURRENT_THRESHOLD <= 0) {
-            SmartDashboard.putString("Resistance Status", "Disabled (Threshold = 0)");
-            shooterResistanceDetected = false; // Disabled
-            shooterHighCurrentStartTime = -1;
-            return;
-        }
-        
-        // Once resistance is detected, it stays detected until manual reset
-        if (shooterResistanceDetected) {
-            SmartDashboard.putString("Resistance Status", "LOCKED - Resistance Detected (Manual Reset Required)");
-            // Don't process further - resistance flag persists until manual reset
-            return;
-        }
-        
-        // Timer-based resistance detection - only if not already detected
-        if (shooterCurrent > ElevatorConstants.SHOOTER_CURRENT_THRESHOLD) {
-            // High current detected
-            if (shooterHighCurrentStartTime < 0) {
-                // First time seeing high current - start the timer
-                shooterHighCurrentStartTime = currentTime;
-                SmartDashboard.putString("Resistance Status", "High Current - Timer Started");
-                System.out.println("HIGH CURRENT TIMER STARTED: " + shooterCurrent + "A (Threshold: " + ElevatorConstants.SHOOTER_CURRENT_THRESHOLD + "A)");
-            } else {
-                // High current ongoing - check if timer has elapsed
-                double highCurrentDuration = currentTime - shooterHighCurrentStartTime;
-                SmartDashboard.putString("Resistance Status", 
-                    String.format("High Current - Duration: %.3fs/%.3fs", 
-                    highCurrentDuration, ElevatorConstants.CURRENT_DETECTION_TIME));
-                SmartDashboard.putNumber("High Current Duration", highCurrentDuration);
-                
-                System.out.println(String.format("HIGH CURRENT ONGOING: %.3fs/%.3fs", 
-                    highCurrentDuration, ElevatorConstants.CURRENT_DETECTION_TIME));
-                
-                if (highCurrentDuration >= ElevatorConstants.CURRENT_DETECTION_TIME) {
-                    // Timer elapsed - resistance is confirmed
-                    shooterResistanceDetected = true;
-                    System.out.println("!!!!! RESISTANCE DETECTED - Motors LOCKED OFF !!!!!");
-                    System.out.println("Average Current: " + shooterCurrent + "A, Threshold: " + ElevatorConstants.SHOOTER_CURRENT_THRESHOLD + "A");
-                    System.out.println("High current duration: " + highCurrentDuration + " seconds");
-                    System.out.println("Motors will remain OFF until manual reset (Start button)");
-                }
-            }
-        } else {
-            // Normal current - reset the high current timer but DON'T clear resistance flag
-            if (shooterHighCurrentStartTime >= 0) {
-                System.out.println("CURRENT DROPPED TO NORMAL: " + shooterCurrent + "A - Resetting high current timer");
-                shooterHighCurrentStartTime = -1;
-            }
-            SmartDashboard.putString("Resistance Status", "Normal Current");
-        }
-    }
-    
-    public void resetResistanceDetection() {
-        shooterResistanceDetected = false;
-        shooterHighCurrentStartTime = -1;
-        System.out.println("Resistance detection manually reset - Motors can now run");
-    }
-    
-    public double getShooterCurrent() {
-        return shooterMotor.getSupplyCurrent().getValueAsDouble();
-    }
-    
-    public boolean isShooterResistanceDetected() {
-        return shooterResistanceDetected;
-    }
-    
 }
+
