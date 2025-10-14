@@ -1,0 +1,56 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": null
+          }
+        },
+        {
+          "type": "sequential",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "ALGAE_POSITION_A "
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "AUTO_ALIGN_RIGHT"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "ALGAE_SHOOTER"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "LEVEL_TWO"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "SHOOTER "
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}
