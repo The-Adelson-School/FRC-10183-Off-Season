@@ -1,48 +1,25 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
 import swervelib.math.Matter;
 
-/**
- * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean constants. This
- * class should not be used for any other purpose. All constants should be declared globally (i.e. public static). Do
- * not put anything functional in this class.
- *
- * <p>It is advised to statically import this class (or one of its inner classes) wherever the
- * constants are needed, to reduce verbosity.
- */
 public final class Constants
 {
-
-  public static final double ROBOT_MASS = (148 - 20.3) * 0.453592; // 32lbs * kg per pound
+  public static final double ROBOT_MASS = (148 - 20.3) * 0.453592;
   public static final Matter CHASSIS    = new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), ROBOT_MASS);
-  public static final double LOOP_TIME  = 0.13; //s, 20ms + 110ms sprk max velocity lag
+  public static final double LOOP_TIME  = 0.13;
   public static final double MAX_SPEED  = Units.feetToMeters(18.5);
-  // Maximum speed of the robot in meters per second, used to limit acceleration.
-
-//  public static final class AutonConstants
-//  {
-//
-//    public static final PIDConstants TRANSLATION_PID = new PIDConstants(0.7, 0, 0);
-//    public static final PIDConstants ANGLE_PID       = new PIDConstants(0.4, 0, 0.01);
-//  }
 
   public static final class DrivebaseConstants
   {
-
-    // Hold time on motor brakes when disabled
-    public static final double WHEEL_LOCK_TIME = 10; // seconds
+    public static final double WHEEL_LOCK_TIME = 10;
   }
 
   public static class OperatorConstants
   {
-
-    // Joystick Deadband
     public static final double DEADBAND        = 0.1;
     public static final double LEFT_Y_DEADBAND = 0.1;
     public static final double RIGHT_X_DEADBAND = 0.1;
@@ -50,91 +27,181 @@ public final class Constants
   }
 
   public static class ElevatorConstants{
-    //Elevator Math
-    public static final int COUNTS_PER_ROTATION = 630; // 3402 but 630 rn because no 2nd 9:1 gear thing
-    public static final double MAX_EXTENTION_INCHES = 22.875; // 22.875
-    public static final double INCHES_PER_ROTATION = 0.28;
+    public static final double MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION = 4.0;
+    public static final double MAX_EXTENTION_INCHES = 34.5; 
+    public static final double INCHES_PER_ROTATION = 1.375;
+    
+    public static final int COUNTS_PER_ROTATION = (int)(2048 * MOTOR_ROTATIONS_PER_ELEVATOR_ROTATION);
     public static final double COUNTS_PER_INCH = COUNTS_PER_ROTATION/INCHES_PER_ROTATION;
 
-    //Wrist Math
-    public static final int WRIST_COUNTS_PER_ROTATION = 1050; //126
-    public static final int MAX_DEGREES = 0; //need to find
-    public static final double DEGREES_PER_ROTATION = 4.8; // 360
-    public static final double COUNTS_PER_DEGREE = WRIST_COUNTS_PER_ROTATION/DEGREES_PER_ROTATION;
+    public static final int STOWED_LEVEL = (int)(0 * COUNTS_PER_INCH);     
+    public static final int LEVEL_ONE = (int)(23 * COUNTS_PER_INCH);            
+    public static final int LEVEL_TWO = (int)(37.7 * COUNTS_PER_INCH);
+    public static final int LEVEL_THREE = (int)(50.0 * COUNTS_PER_INCH); // NEW: Stage 3 height
     
+    // NEW: Algae kicker specific elevator positions
+    public static final int ALGAE_POSITION_A = (int)(13.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
+    public static final int ALGAE_POSITION_B = (int)(24.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
+
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
+    public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
     
-    //Elevator Set Points
-    public static final int HANGING_LEVEL =(int)(1.75 * COUNTS_PER_INCH);
-    public static final int STOWED_LEVEL = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int CORAL_STATION = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int LEVEL_ONE = (int)(1.75 * COUNTS_PER_INCH);
-    public static final int LEVEL_TWO = (int)(4 * COUNTS_PER_INCH); // 11.75 in
-    public static final int LEVEL_THREE = (int)(22.275 * COUNTS_PER_INCH);; // 22.875 in
-    public static final int LEVEL_FOUR = (int)(21.875 * COUNTS_PER_INCH); // 22.875 in
+    public static final double MOTION_MAGIC_KP = 15.0;     
+    public static final double MOTION_MAGIC_KI = 0.1;     
+    public static final double MOTION_MAGIC_KD = 0.03;    
+    public static final double MOTION_MAGIC_KV = 0.2;     
+    public static final double MOTION_MAGIC_KS = 0.24;    
+    public static final double MOTION_MAGIC_KA = MOTION_MAGIC_CRUISE_VELOCITY / MOTION_MAGIC_ACCELERATION;
+    public static final double PEAK_FORWARD_VOLTAGE = 15.5;    
+    public static final double PEAK_REVERSE_VOLTAGE = -3.5;  
+    public static final double MOTION_MAGIC_KG = 1.0;
+    
+    public static final double ELEVATOR_SUPPLY_CURRENT_LIMIT = 60.0;      
+    public static final boolean ELEVATOR_SUPPLY_LIMIT_ENABLE = true;      
+    public static final double ELEVATOR_STATOR_CURRENT_LIMIT = 120.0;      
+    public static final boolean ELEVATOR_STATOR_LIMIT_ENABLE = true;      
+    
+    public static final double ELEVATOR_POSITION_TOLERANCE = 500;
 
-    //Wrist Set Points
-    public static final int STOWED_ANGLE = 10; 
-    public static final int CORAL_ANGLE = -(int)(58 * COUNTS_PER_DEGREE); // aprx. 50° NEEDS TO BE INVERTED
-    public static final int SCORING_ANGLE = -(int)(20 * COUNTS_PER_DEGREE); // aprx. 25° 
-    public static final int HANGING_ANGLE = -(int)(160 * COUNTS_PER_DEGREE);
-    public static final int LEVEL_FOUR_ANGLE = -(int)(125 * COUNTS_PER_DEGREE); // aprx. 180° NEEDS TO BE INVERTED
-
-    //Intake Speeds
-    public static final double INTAKE_IN = 0.3; //Maybe needs to be reversed
+    // Intake only moves one direction
+    public static final double INTAKE_OUT = -1;
     public static final double INTAKE_STOP = 0.0;
-    public static final double INTAKE_OUT = -0.95;
-  }
 
-  public static class AlgaeConstants{
-    public static final int DEGREES_PER_ROT = 2;
+    public static final double INTAKE_SPEED_MS = 450;
+    public static final double INTAKE_POSITION_TOLERANCE = 0.5;
+    public static final double INTAKE_ROTATION_DISTANCE = 1.0;
     
+    public static final double SHOOTER_ON = -1;         // Reversed direction
+    public static final double SHOOTER_STOP = 0.0;     
     
-    //arm limits
-    public static final int MAX_HEIGHT = 0;
-    public static final int MIN_HEIGHT = -20; //change when determined
-  
-   //Intake Speeds
-    public static final double INTAKE_IN = 0.5; //Maybe needs to be reversed
-    public static final double INTAKE_STOP = 0.0;
-    public static final double INTAKE_OUT = -0.5;
-  
-  }
+    // Resistance detection - SHOOTER ONLY
+    public static final double SHOOTER_CURRENT_THRESHOLD = 17;
+    public static final double CURRENT_DETECTION_TIME = 0.5;
+    // Following is for Shooting not intaking
+    public static final double SHOOTER_AUTO_RUN_TIME = 2;
 
-  public static class HangerConstants{
-    //Hanger Math
-    public static final int COUNTS_PER_ROTATION = 30618;
-    public static final double DEGREES_PER_ROTATION = 0.49382716049;
-    public static final double COUNTS_PER_DEGREE = (double)(COUNTS_PER_ROTATION/DEGREES_PER_ROTATION);
-  
-    //Hanger Setpoints
-    public static final int STAGE_ZERO = (int)(0 * COUNTS_PER_DEGREE);
-    public static final int STAGE_ONE = -(int)(10* COUNTS_PER_DEGREE);
-    public static final int STAGE_TWO = (int)(18 * COUNTS_PER_DEGREE);
+    // NEW: Algae kicker motor constants
+    public static final double ALGAE_KICKER_ON = -1.0;   // Full power forward
+    public static final double ALGAE_KICKER_STOP = 0.0; // Stop motor
+
+    // COMMENTED OUT: Cage Motor Constants
+    /*
+    public static final int CAGE_MOTOR_ID = 21;
+    public static final int CAGE_CLIMB_ID = 22;
+    
+    // Cage Motor Resistance Detection
+    public static final double CAGE_CURRENT_THRESHOLD = 20.0; // Amps - changeable
+    public static final double CAGE_RESISTANCE_TIME = 0.5; // Seconds - changeable
+    
+    // Cage Motor Motion Magic Settings
+    public static final double CAGE_ROTATION_DEGREES = 45.0; // Degrees - changeable
+    public static final double CAGE_GEAR_RATIO = 45.0; // 45:1 gear ratio
+    public static final double CAGE_MOTION_MAGIC_CRUISE_VELOCITY = 2.0; // Rotations per second - changeable
+    public static final double CAGE_MOTION_MAGIC_ACCELERATION = 4.0; // Rotations per second squared - changeable
+    
+    // Cage Motor PID Constants (changeable)
+    public static final double CAGE_MOTION_MAGIC_KP = 10.0;
+    public static final double CAGE_MOTION_MAGIC_KI = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KD = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KV = 0.12;
+    public static final double CAGE_MOTION_MAGIC_KS = 0.25;
+    public static final double CAGE_MOTION_MAGIC_KA = 0.0;
+    public static final double CAGE_MOTION_MAGIC_KG = 0.0;
+    
+    // Cage Motor Speeds
+    public static final double CAGE_SPIN_SPEED = 1.0; // Full speed - changeable
+    public static final double CAGE_STOP = 0.0;
+    
+    // Cage Motor Current Limits
+    public static final double CAGE_SUPPLY_CURRENT_LIMIT = 30.0; // Amps
+    public static final double CAGE_STATOR_CURRENT_LIMIT = 60.0; // Amps
+    */
+
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 2;
-    public static final double Y_REEF_ALIGNMENT_P = 2;
+    public static final double X_REEF_ALIGNMENT_P = 3;
+    public static final double Y_REEF_ALIGNMENT_P = 3.5;
     public static final double ROT_REEF_ALIGNMENT_P = 0.1;
   
-    public static final double ROT_SETPOINT_REEF_ALIGNMENT = 0.2;  // Rotation
-    public static final double ROT_TOLERANCE_REEF_ALIGNMENT = 3;
-    public static final double X_SETPOINT_REEF_ALIGNMENT = -0.53;  // Vertical pose
-    public static final double X_TOLERANCE_REEF_ALIGNMENT = 2.5;
-    public static final double Y_SETPOINT_REEF_ALIGNMENT = 0.12;  // Horizontal pose
-    public static final double Y_TOLERANCE_REEF_ALIGNMENT = 3;
+    // RIGHT CAMERA SETPOINTS (limelight-right)
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_RIGHT = 0;//-13;
+    public static final double ROT_TOLERANCE_REEF_ALIGNMENT_RIGHT = 1;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_RIGHT = -0.2;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_RIGHT = .43; 
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    
+    // LEFT CAMERA SETPOINTS (limelight-left)  
+    public static final double ROT_SETPOINT_REEF_ALIGNMENT_LEFT = 0;
+    public static final double ROT_TOLERANCE_REEF_ALIGNMENT_LEFT = 1;
+    public static final double X_SETPOINT_REEF_ALIGNMENT_LEFT = 0.2;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    public static final double Y_SETPOINT_REEF_ALIGNMENT_LEFT = .1; // Base Y setpoint for left camera
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    
+    // SPECIAL CROSS-CAMERA OFFSET: Right alignment using left camera
+    public static final double Y_OFFSET_RIGHT_ALIGN_ON_LEFT_CAMERA = 0.2; // Additional offset when aligning right with left camera
+    
+    // NEW: Algae kicker specific alignment offset
+    public static final double Y_OFFSET_ALGAE_KICKER =.3; // Y offset for algae alignment (0.0 = center, adjust as needed)
 
     public static final double DONT_SEE_TAG_WAIT_TIME = 1;
     public static final double POSE_VALIDATION_TIME = 1;
+
+    public static final String RIGHT_LIMELIGHT_NAME = "limelight-right";
+    public static final String LEFT_LIMELIGHT_NAME = "limelight-left";
+    
+    public static final double MAX_POSE_AMBIGUITY = 0.3;
+    public static final double MAX_TAG_DISTANCE = 8.0;
+    public static final int MIN_TAG_COUNT = 2;
+    public static final double SINGLE_TAG_MAX_DISTANCE = 3.0;
+    public static final double MAX_Z_ERROR = 0.5;
+    public static final double MAX_AMBIGUITY = 0.2;
+
+    public static final double BASE_CONFIDENCE_SINGLE_TAG = 0.8;
+    public static final double BASE_CONFIDENCE_TWO_TAGS = 0.3;
+    public static final double BASE_CONFIDENCE_MULTI_TAGS = 0.2;
+    public static final double MIN_CONFIDENCE = 0.1;
+    
+    public static final double DISTANCE_WEIGHT = 0.3;
+    public static final double DISTANCE_SCALE = 5.0;
+    public static final double AREA_WEIGHT = 0.2;
+    public static final double AREA_SCALE = 2.0;
+    
+    public static final double XY_STD_DEV_FACTOR = 1.0;
+    public static final double ROTATION_STD_DEV_FACTOR = 2.0;
+    
+    public static final int APRILTAG_PIPELINE_INDEX = 0;
+    
+    public static final boolean ENABLE_MEGATAG2 = true;
+    public static final double PITCH_DEGREES = 0.0;
+    public static final double ROLL_DEGREES = 0.0;
+    public static final double PITCH_RATE_DEG_PER_SEC = 0.0;
+    public static final double ROLL_RATE_DEG_PER_SEC = 0.0;
   }
-  public static final double WHEEL_DIAMETER_METERS = 0.1016; // 4 in wheels
-  public static final double WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER_METERS * Math.PI;
 
-  public static final int ENCODER_CPR = 2048; // Falcon500 integrated encoder
-  public static final double GEAR_RATIO = 6.86; // Check your module config
-
-  public static final double METERS_PER_TICK =
-      WHEEL_CIRCUMFERENCE / (ENCODER_CPR * GEAR_RATIO);
-
-  
+  public static class FieldMovementConstants {
+    public static final double X_TRANSLATION_P = 0.1;
+    public static final double X_TRANSLATION_I = 0.0;
+    public static final double X_TRANSLATION_D = 0;
+    
+    public static final double Y_TRANSLATION_P = 0.1;
+    public static final double Y_TRANSLATION_I = 0.0;
+    public static final double Y_TRANSLATION_D = 0;
+    
+    public static final double ROTATION_P = 0.2;
+    public static final double ROTATION_I = 0.0;
+    public static final double ROTATION_D = 0.0;
+    
+    public static final double DEFAULT_POSITION_TOLERANCE = 0.1;
+    public static final double DEFAULT_ROTATION_TOLERANCE = 2.0;
+    
+    public static final double MAX_AUTO_TRANSLATION_SPEED = 1.5;
+    public static final double MAX_AUTO_ROTATION_SPEED = Math.PI / 2;
+    
+    public static final double POSITION_DISTANCE_FROM_TAG = 0;
+    public static final double LEFT_POSITION_OFFSET = 0;
+    public static final double RIGHT_POSITION_OFFSET = 0;
+  }
 }

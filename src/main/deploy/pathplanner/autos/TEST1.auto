@@ -7,6 +7,7 @@
         {
           "type": "path",
           "data": {
+<<<<<<< HEAD
             "pathName": "New New New New New New New New New New New New New New Path"
           }
         },
@@ -14,6 +15,9 @@
           "type": "path",
           "data": {
             "pathName": "New New New New New New New New New New New New New Path"
+=======
+            "pathName": "Blue Right Path"
+>>>>>>> 0749bba29808564c11e83770297f78cc841882bd
           }
         }
       ]

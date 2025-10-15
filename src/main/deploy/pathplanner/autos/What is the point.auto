@@ -1,0 +1,91 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "New New New New New New New New New New New New Path"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "STOP SHOOTER AND INTAKE"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "STOWED LEVEL"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "STOP SHOOTER AND INTAKE"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 10.0
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "LEVEL_TWO"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 2.0
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "LEVEL_ONE"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "START SHOOTER AND INTAKE"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 2.0
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "STOWED LEVEL"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 2.0
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "LEVEL_TWO"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}
