@@ -3,6 +3,8 @@
 // WPILib BSD license file in the root directory of this project.
 // THIS SHOULD BE ON FRC OFF SEASON
 package frc.robot; 
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -15,18 +17,20 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.commands.AlignToReefCenterAlgae;
+import frc.robot.subsystems.AlignToReefCenterAlgae;
+
+import frc.utility.Buttons;
 
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ElevatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.IncreaseCommand;
 import frc.robot.commands.DecreaseCommand;
-import frc.robot.subsystems.elevator.AutoAlignWrapper;
 import frc.robot.subsystems.elevator.ElevatorSubsystem;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
@@ -35,38 +39,59 @@ import com.pathplanner.lib.auto.NamedCommands;
 
 import frc.robot.subsystems.AlignToReefNew;
 import frc.robot.subsystems.AlignToReefTagPose;
-
-  // Other setup code...
+import frc.robot.subsystems.Hang;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a "declarative" paradigm, very
  * little robot logic should actually be handled in the {@link Robot} periodic methods (other than the scheduler calls).
  * Instead, the structure of the robot (including subsystems, commands, and trigger mappings) should be declared here.
  */
-
- 
 public class RobotContainer
 {
-  // Replace with CommandPS4Controller or CommandJoystick if needed
-  final         CommandXboxController driverXbox = new CommandXboxController(0);
-  final         CommandXboxController operatorXbox = new CommandXboxController(1);
+  // Initialize Buttons class to handle all controller inputs
+  private final Buttons buttons = new Buttons();
+  
   // The robot's subsystems and commands are defined here...
   private final SwerveSubsystem       drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(),
-                                                                                "swerve"));
+                                                                              "swerve"));
   private final ElevatorSubsystem elevator = new ElevatorSubsystem(3, 5, 1, 4, 2); // Leader=3, Follower=5, Intake=1, Shooter=4, AlgaeKicker=2
+  private final Hang hang = new Hang(); // Add Hang subsystem
+  
   // Create command instances with proper dependency injection
   private final IncreaseCommand increaseCommand = new IncreaseCommand(elevator);
   private final DecreaseCommand decreaseCommand = new DecreaseCommand(elevator);
+
+  /* 
+  public class Climber extends SubsystemBase {
+    private final TalonFX climberMotor;
+    private static final int CLIMBER_MOTOR_ID = 41;  // Update with your actual CAN ID
+
+    public Climber() {
+        climberMotor = new TalonFX(CLIMBER_MOTOR_ID, "CANivore");
+        climberMotor.setNeutralMode(NeutralModeValue.Brake);
+    }
+
+    public void climberteleop(double speed) {
+        climberMotor.set(speed);
+    }
+
+    public void stop() {
+        climberMotor.set(0.0);
+    }
+  }
   
+  private final Climber m_Climber = new Climber();
+
+  */
 
   /**
    * Converts driver input into a field-relative ChassisSpeeds that is controlled by angular velocity.
    */
   //teleop driver control
   SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
-                                                                () -> driverXbox.getLeftY() * 1,
-                                                                () -> driverXbox.getLeftX() * 1)
-                                                            .withControllerRotationAxis(() -> driverXbox.getRightX() * -1)
+                                                                () -> buttons.getDriverLeftY() * 1,
+                                                                () -> buttons.getDriverLeftX() * 1)
+                                                            .withControllerRotationAxis(() -> buttons.getDriverRightX() * -1)
                                                             .deadband(OperatorConstants.DEADBAND)
                                                             .scaleTranslation(1.0)
                                                             .allianceRelativeControl(true);
@@ -74,8 +99,8 @@ public class RobotContainer
   /**
    * Clone's the angular velocity input stream and converts it to a fieldRelative input stream.
    */
-  SwerveInputStream driveDirectAngle = driveAngularVelocity.copy().withControllerHeadingAxis(() -> driverXbox.getRightX() * -1,
-                                                                                             driverXbox::getRightY)
+  SwerveInputStream driveDirectAngle = driveAngularVelocity.copy().withControllerHeadingAxis(() -> buttons.getDriverRightX() * -1,
+                                                                                             () -> buttons.getDriverRightY())
                                                            .headingWhile(true);
 
   /**
@@ -85,9 +110,9 @@ public class RobotContainer
                                                              .allianceRelativeControl(false);
 
   SwerveInputStream driveAngularVelocityKeyboard = SwerveInputStream.of(drivebase.getSwerveDrive(),
-                                                                        () -> -driverXbox.getLeftY(),
-                                                                        () -> -driverXbox.getLeftX())
-                                                                    .withControllerRotationAxis(() -> driverXbox.getRawAxis(
+                                                                        () -> -buttons.getDriverLeftY(),
+                                                                        () -> -buttons.getDriverLeftX())
+                                                                    .withControllerRotationAxis(() -> buttons.getDriverXbox().getRawAxis(
                                                                          2) * -1)
                                                                     .deadband(OperatorConstants.DEADBAND)
                                                                     .scaleTranslation(1.0)
@@ -96,14 +121,14 @@ public class RobotContainer
   SwerveInputStream driveDirectAngleKeyboard     = driveAngularVelocityKeyboard.copy()
                                                                                .withControllerHeadingAxis(() ->
                                                                                                               Math.sin(
-                                                                                                                  driverXbox.getRawAxis(
+                                                                                                                  buttons.getDriverXbox().getRawAxis(
                                                                                                                       2) *
                                                                                                                   Math.PI) *
                                                                                                               (Math.PI *
                                                                                                                2),
                                                                                                           () ->
                                                                                                               Math.cos(
-                                                                                                                  driverXbox.getRawAxis(
+                                                                                                                  buttons.getDriverXbox().getRawAxis(
                                                                                                                       2) *
                                                                                                                   Math.PI) *
                                                                                                               (Math.PI *
@@ -143,28 +168,11 @@ public class RobotContainer
     NamedCommands.registerCommand("STOP SHOOTER", createDirectStopShooterCommand());
     NamedCommands.registerCommand("RUN INTAKE 2 SECONDS", createRunIntake2SecondsCommand());
     
-    // Legacy combined command (now just starts shooter)
-    
     // Auto-Alignment Commands for PathPlanner
     NamedCommands.registerCommand("AUTO_ALIGN_LEFT", createAutoAlignLeftCommand());
     NamedCommands.registerCommand("AUTO_ALIGN_RIGHT", createAutoAlignRightCommand());
     
-    System.out.println("PathPlanner Named Commands Registered:");
-    System.out.println("- STOWED_LEVEL: Move elevator to stowed/home position");
-    System.out.println("- ALGAE_POSITION_A: Move elevator to algae position A");
-    System.out.println("- ALGAE_POSITION_B: Move elevator to algae position B");
-    System.out.println("- LEVEL_ONE: Move elevator to level 1");
-    System.out.println("- LEVEL_TWO: Move elevator to level 2");
-    System.out.println("- LEVEL_THREE: Move elevator to level 3");
-    System.out.println("- ALGAE_SHOOTER: Run algae kicker for 1 second");
-    System.out.println("- SHOOTER: Run shooter for 1 second");
-    System.out.println("- START SHOOTER: Start shooter only (STOWED level only)");
-    System.out.println("- STOP SHOOTER: Stop shooter only");  
-    System.out.println("- RUN INTAKE 2 SECONDS: Run intake for exactly 2 seconds (any level)");
-    System.out.println("- START SHOOTER AND INTAKE: Legacy - same as START SHOOTER");
-    System.out.println("- STOP SHOOTER AND INTAKE: Legacy - same as STOP SHOOTER");
-    System.out.println("- AUTO_ALIGN_LEFT: Auto-align to AprilTag using left camera priority");
-    System.out.println("- AUTO_ALIGN_RIGHT: Auto-align to AprilTag using right camera priority");
+
   }
 
   /**
@@ -211,57 +219,52 @@ public class RobotContainer
                                                                              360),
                                                                          Math.toRadians(
                                                                              90))));
-      driverXbox.start().onTrue(Commands.runOnce(() -> drivebase.resetOdometry(new Pose2d(3, 3, new Rotation2d()))));
-      driverXbox.button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
-      driverXbox.button(2).whileTrue(Commands.print("Drive to pose simulation test"));
+      buttons.getDriverStart().onTrue(Commands.runOnce(() -> drivebase.resetOdometry(new Pose2d(3, 3, new Rotation2d()))));
+      buttons.getDriverXbox().button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
+      buttons.getDriverXbox().button(2).whileTrue(Commands.print("Drive to pose simulation test"));
 
     }
     if (DriverStation.isTest())
     {
       drivebase.setDefaultCommand(driveFieldOrientedAnglularVelocity); // Overrides drive command above!
 
-      driverXbox.x().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
-      driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-      driverXbox.back().whileTrue(drivebase.centerModulesCommand());
-      driverXbox.leftBumper().onTrue(Commands.none());
-      driverXbox.rightBumper().onTrue(Commands.none());
+      buttons.getDriverX().whileTrue(Commands.runOnce(drivebase::lock, drivebase).repeatedly());
+      buttons.getDriverStart().onTrue((Commands.runOnce(drivebase::zeroGyro)));
+      buttons.getDriverBack().whileTrue(drivebase.centerModulesCommand());
+      buttons.getDriverLeftBumper().onTrue(Commands.none());
+      buttons.getDriverRightBumper().onTrue(Commands.none());
     } else
     {
       //elevator.setDefaultCommand(new InstantCommand(() -> elevator.defaultCommand(), elevator));
       elevator.setDefaultCommand(
     Commands.run(() -> elevator.defaultCommand(), elevator)
 );
-      // Driver controls (moved from operator)
-      driverXbox.a().onTrue((Commands.runOnce(drivebase::zeroGyro)));
+      // Driver controls   (moved from operator)
+      buttons.getDriverA().onTrue((Commands.runOnce(drivebase::zeroGyro)));
       
       // X button - Dynamic algae autoalign with SWAPPED tag-based elevator positioning (RIGHT camera priority) - WITH DRIVER OVERRIDE
-  // Build the command once so we can cancel it on button release
-Command alignCenterAlgaeCmd = new AlignToReefCenterAlgae(
-  drivebase,
-  () -> driverXbox.getLeftY(),
-  () -> driverXbox.getLeftX(),
-  () -> driverXbox.getRightX(),
-  elevator
-).withName("X_AlignCenter_Algae");
+      // Build the command once so we can cancel it on button release
+      Command alignCenterAlgaeCmd = new AlignToReefCenterAlgae(
+        drivebase,
+        () -> buttons.getDriverLeftY(),
+        () -> buttons.getDriverLeftX(),
+        () -> buttons.getDriverRightX(),
+        elevator
+      ).withName("X_AlignCenter_Algae");
 
-// Start on press; command self-terminates on driver override.
-// Also cancel on release if still running.
-driverXbox.x()
-.onTrue(alignCenterAlgaeCmd)
-.onFalse(Commands.runOnce(alignCenterAlgaeCmd::cancel));
+      // Start on press; command self-terminates on driver override.
+      // Also cancel on release if still running.
+      buttons.getDriverX()
+      .onTrue(alignCenterAlgaeCmd)
+      .onFalse(Commands.runOnce(alignCenterAlgaeCmd::cancel));
 
-// Add alongside your existing X binding (keep that one unchanged)
-driverXbox.x()
-  .onTrue(Commands.runOnce(() -> elevator.startAlgaeKicker()))   // start on press
-  .onFalse(Commands.runOnce(() -> elevator.stopAlgaeKicker()));  // stop on release
-
-// Add alongside your existing X binding (keep that one unchanged)
-//driverXbox.x().whileTrue(Commands.runOnce(() -> elevator.startAlgaeKicker())) ;  // start on press
- // .onFalse(Commands.runOnce(() -> elevator.stopAlgaeKicker()));  // stop on release
-
+      // Add alongside your existing X binding (keep that one unchanged)
+      buttons.getDriverX()
+        .onTrue(Commands.runOnce(() -> elevator.startAlgaeKicker()))   // start on press
+        .onFalse(Commands.runOnce(() -> elevator.stopAlgaeKicker()));  // stop on release
 
       // B button now controls shooter override in stages 1 and 2 with full power (30A limit)
-      driverXbox.b()
+      buttons.getDriverB()
         .whileTrue(new InstantCommand(() -> {
           elevator.setManualShooterOverride(true);
           // Set full power (-1.0) which will be current-limited to 30A by motor controller
@@ -275,16 +278,16 @@ driverXbox.x()
         }, elevator));
       
       // Elevator stage controls on POV (D-pad)
-      driverXbox.povUp().onTrue(increaseCommand);
-      driverXbox.povDown().onTrue(decreaseCommand);
+      buttons.getDriverPovUp().onTrue(increaseCommand);
+      buttons.getDriverPovDown().onTrue(decreaseCommand);
       
       // Intake control on left bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      driverXbox.leftBumper().onTrue(
+      buttons.getDriverLeftBumper().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
-                                   () -> driverXbox.getLeftY(), 
-                                   () -> driverXbox.getLeftX(), 
-                                   () -> driverXbox.getRightX(), 
+                                   () -> buttons.getDriverLeftY(), 
+                                   () -> buttons.getDriverLeftX(), 
+                                   () -> buttons.getDriverRightX(), 
                                    elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1
@@ -294,12 +297,12 @@ driverXbox.x()
       );
 
       // Right bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      driverXbox.rightBumper().onTrue(
+      buttons.getDriverRightBumper().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase,
-                                   () -> driverXbox.getLeftY(), 
-                                   () -> driverXbox.getLeftX(), 
-                                   () -> driverXbox.getRightX(), 
+                                   () -> buttons.getDriverLeftY(), 
+                                   () -> buttons.getDriverLeftX(), 
+                                   () -> buttons.getDriverRightX(), 
                                    elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(1)), // Stage 1
@@ -309,15 +312,15 @@ driverXbox.x()
       );
 
       // Reset resistance detection on start button
-      driverXbox.start().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
+      buttons.getDriverStart().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
       
       // Automated sequences on triggers with alignment - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      driverXbox.leftTrigger().onTrue(
+      buttons.getDriverLeftTrigger().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
-                                   () -> driverXbox.getLeftY(), 
-                                   () -> driverXbox.getLeftX(), 
-                                   () -> driverXbox.getRightX(), 
+                                   () -> buttons.getDriverLeftY(), 
+                                   () -> buttons.getDriverLeftX(), 
+                                   () -> buttons.getDriverRightX(), 
                                    elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
@@ -326,12 +329,12 @@ driverXbox.x()
         ).withName("LeftTrigger_LeftAlign_Stage2_AutoShooter_0.5s")
       );
       
-      driverXbox.rightTrigger().onTrue(
+      buttons.getDriverRightTrigger().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase, 
-                                   () -> driverXbox.getLeftY(), 
-                                   () -> driverXbox.getLeftX(), 
-                                   () -> driverXbox.getRightX(), 
+                                   () -> buttons.getDriverLeftY(), 
+                                   () -> buttons.getDriverLeftX(), 
+                                   () -> buttons.getDriverRightX(), 
                                    elevator), // CHANGED: Added elevator for auto-shooter after alignment
           new SequentialCommandGroup(
             Commands.runOnce(() -> elevator.engageStage(2)), // Stage 2
@@ -341,16 +344,49 @@ driverXbox.x()
       );
 
       // Unused buttons for future expansion
-      driverXbox.back().whileTrue(Commands.none());
+      buttons.getDriverBack().whileTrue(Commands.none());
 
       // Operator controller - all functions moved to driver controller
       // Keep operator available for additional functions if needed
-      operatorXbox.a().whileTrue(Commands.none()); // Available for future use
-      operatorXbox.b().whileTrue(Commands.none()); // Available for future use
-      operatorXbox.x().whileTrue(Commands.none()); // Available for future use
-      operatorXbox.y().whileTrue(Commands.none()); // Available for future use
+      // Climber UP - A button (while held)
+      /* */
+      /* 
+      buttons.getOperatorA()
+        .whileTrue(Commands.run(() -> m_Climber.climberteleop(1.0), m_Climber))
+        .onFalse(Commands.runOnce(m_Climber::stop, m_Climber));
+
+      // Climber DOWN - B button (while held)
+      buttons.getOperatorB()
+        .whileTrue(Commands.run(() -> m_Climber.climberteleop(-1.0), m_Climber))
+        .onFalse(Commands.runOnce(m_Climber::stop, m_Climber));
+      */
+      buttons.getOperatorX().whileTrue(Commands.none()); // Available for future use
+      
+      // Operator Xbox D-pad controls for manual CLIMBER motor (not intake)
+      // D-pad Right - Manual climber motor forward at full speed (while held)
+      buttons.getOperatorPovRight()
+        .whileTrue(Commands.run(() -> hang.setManualPower(1.0), hang))
+        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
+      
+      // D-pad Left - Manual climber motor reverse at full speed (while held)
+      buttons.getOperatorPovLeft()
+        .whileTrue(Commands.run(() -> hang.setManualPower(-1.0), hang))
+        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
+      
+      // Driver D-pad Right - Increase hang stage (0→1→2, stops at 2)
+      buttons.getDriverPovRight().onTrue(new InstantCommand(() -> {
+        System.out.println("D-pad Right pressed - increasing hang stage");
+        hang.increaseStage();
+      }, hang));
+      
+      // Driver D-pad Left - Decrease hang stage (2→1→0, stops at 0)
+      buttons.getDriverPovLeft().onTrue(new InstantCommand(() -> {
+        System.out.println("D-pad Left pressed - decreasing hang stage");
+        hang.decreaseStage();
+      }, hang));
      
     }
+    /* */
   }
 
   /**
@@ -363,7 +399,6 @@ driverXbox.x()
     // FIXED: Add comprehensive safety checks and initialization delays for autonomous
     return Commands.sequence(
       // Step 1: Ensure systems are fully ready
-      Commands.runOnce(() -> System.out.println("AUTONOMOUS: Starting initialization checks...")),
       
       // Step 2: Wait for swerve drive to be fully initialized
       Commands.waitUntil(() -> {
@@ -386,7 +421,6 @@ driverXbox.x()
         try {
           // Ensure robot is in a known good state
           drivebase.drive(new ChassisSpeeds(0, 0, 0)); // Stop any movement
-          System.out.println("AUTONOMOUS: Systems ready, starting path: MIDDLE AUTO TEST");
         } catch (Exception e) {
           System.err.println("AUTONOMOUS: Error in state reset: " + e.getMessage());
         }
@@ -441,7 +475,6 @@ driverXbox.x()
     return Commands.sequence(
       Commands.runOnce(() -> {
         elevator.goToAlgaePositionA();
-        System.out.println("PATHPLANNER: Moving elevator to Algae Position A (" + ElevatorConstants.ALGAE_POSITION_A + " counts)");
       }, elevator),
       Commands.waitUntil(() -> elevator.isElevatorAtAlgaePositionA()),
       Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Algae Position A"))
@@ -455,7 +488,7 @@ driverXbox.x()
     return Commands.sequence(
       Commands.runOnce(() -> {
         elevator.goToAlgaePositionB();
-        System.out.println("PATHPLANNER: Moving elevator to Algae Position B (" + ElevatorConstants.ALGAE_POSITION_B + " counts)");
+
       }, elevator),
       Commands.waitUntil(() -> elevator.isElevatorAtAlgaePositionB()),
       Commands.runOnce(() -> System.out.println("PATHPLANNER: Elevator reached Algae Position B"))
@@ -519,22 +552,6 @@ driverXbox.x()
   }
 
   /**
-   * Run algae kicker for 1 second
-   */
-  /*
-  private Command createAlgaeShooterCommand() {
-    return Commands.sequence(
-      Commands.runOnce(() -> {
-        elevator.startAlgaeKicker();
-      }, elevator),
-      Commands.waitSeconds(1.0),
-      Commands.runOnce(() -> {
-        elevator.stopAlgaeKicker();
-      }, elevator)
-    ).withName("AlgaeShooter1Sec");
-  }
-*/
-  /**
    * Run shooter for 1 second
    */
   private Command createShooterCommand() {
@@ -579,35 +596,6 @@ driverXbox.x()
     ).withName("AutoAlignRight").withTimeout(5.0); // 5 second timeout for safety
   }
 
-  // SIMPLIFIED: Direct Motor Control Commands (No Manual Mode Required)
-
-  /**
-   * Start shooter and intake motors directly in autonomous
-   * Safety check: Only works when robot is at STOWED LEVEL (stage 0)
-   * Motors run continuously until stopped by STOP command
-   */
-  private Command createDirectStartShooterIntakeCommand() {
-    return Commands.runOnce(() -> {
-      if (elevator.isAtStowedLevel()) {
-        // Direct motor control - start shooter at full reverse power
-        elevator.setShooterSpeed(-1.0); // Full power reverse for shooting
-        // Direct motor control - start intake outward
-        elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT);
-
-      }
-    }, elevator).withName("DirectStartShooterIntake");
-  }
-
-
-  private Command createDirectStopShooterIntakeCommand() {
-    return Commands.runOnce(() -> {
-      elevator.setShooterSpeed(0.0);
-      elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
-    }, elevator).withName("DirectStopShooterIntake");
-  }
-
-  // SEPARATED: Individual Motor Control Commands
-
   /**
    * Start ONLY shooter motor directly in autonomous
    * Safety check: Only works when robot is at STOWED LEVEL (stage 0)
@@ -617,10 +605,7 @@ driverXbox.x()
     return Commands.runOnce(() -> {
       if (elevator.isAtStowedLevel()) {
         elevator.setShooterSpeed(-1.0); // Full power reverse for shooting
-        System.out.println("PATHPLANNER: Starting SHOOTER ONLY at stowed level");
-      } else {
-        System.out.println("PATHPLANNER ERROR: Cannot start shooter - robot not at STOWED LEVEL");
-      }
+      } 
     }, elevator).withName("DirectStartShooter");
   }
 
@@ -644,25 +629,11 @@ driverXbox.x()
     return Commands.sequence(
       Commands.runOnce(() -> {
         elevator.setIntakeSpeed(ElevatorConstants.INTAKE_OUT);
-        System.out.println("PATHPLANNER: Starting intake for 2 seconds");
       }, elevator),
       Commands.waitSeconds(2.0),
       Commands.runOnce(() -> {
         elevator.setIntakeSpeed(ElevatorConstants.INTAKE_STOP);
-        System.out.println("PATHPLANNER: Intake stopped after 2 seconds");
       }, elevator)
     ).withName("RunIntake2Seconds");
   }
-
-  // LEGACY: Keep old combined commands for backward compatibility (but they only affect shooter now)
-  //private Command createDirectStartShooterIntakeCommand() {
-  //  return createDirectStartShooterCommand(); // Just start shooter, NO intake
-  //}
-
-  //private Command createDirectStopShooterIntakeCommand() {
-   // return createDirectStopShooterCommand(); // Just stop shooter, intake handled separately
- // }
-
 }
-
-

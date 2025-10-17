@@ -22,6 +22,7 @@ public class ElevatorSubsystem extends SubsystemBase {
     TalonFX intakeMotor;
     TalonFX shooterMotor;
     TalonFX algaeKickerMotor;
+    TalonFX Climber;
     // COMMENTED OUT: Cage motors
     /*
     TalonFX cageMotor; // NEW: Cage motor
@@ -423,6 +424,10 @@ public class ElevatorSubsystem extends SubsystemBase {
     
     public boolean isManualControlEnabled() {
         return manualShooterControl && manualIntakeControl;
+    }
+
+    public void climberteleop(double speed){
+        Climber.set(speed);
     }
 
     // COMMENTED OUT: Cage Motor Control Methods

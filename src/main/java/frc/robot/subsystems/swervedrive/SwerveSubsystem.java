@@ -222,7 +222,7 @@ public class SwerveSubsystem extends SubsystemBase {
       double yawRadians = getHeading().getRadians();
       double yawRateRadPerSec = getRobotVelocity().omegaRadiansPerSecond;
       visionSystem.updateRobotOrientation(yawRadians, yawRateRadPerSec);
-      visionSystem.processVisionMeasurements();
+      //visionSystem.processVisionMeasurements();
     }
 
     // Get current robot pose and send to SmartDashboard

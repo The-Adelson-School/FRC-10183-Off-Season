@@ -1,20 +1,17 @@
 package frc.robot.subsystems.swervedrive;
 
+import java.util.function.Consumer;
+
+import edu.wpi.first.math.estimator.PoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
-import frc.robot.LimelightHelpers.LimelightResults;
 import frc.robot.LimelightHelpers.PoseEstimate;
-import java.util.Optional;
-import java.util.function.Consumer;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
-import edu.wpi.first.networktables.GenericEntry;
 
 public class LimeLightStuff {
     
@@ -349,11 +346,8 @@ public class LimeLightStuff {
      * Get alliance-aware pose estimate from Limelight
      */
     private PoseEstimate getAllianceAwarePoseEstimate(String cameraName) {
-        if (isRedAlliance()) {
-            return LimelightHelpers.getBotPoseEstimate_wpiRed(cameraName);
-        } else {
-            return LimelightHelpers.getBotPoseEstimate_wpiBlue(cameraName);
-        }
+            return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(cameraName);
+        
     }
     
     /**

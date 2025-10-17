@@ -40,8 +40,8 @@ public final class Constants
     public static final int LEVEL_THREE = (int)(50.0 * COUNTS_PER_INCH); // NEW: Stage 3 height
     
     // NEW: Algae kicker specific elevator positions
-    public static final int ALGAE_POSITION_A = (int)(13.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
-    public static final int ALGAE_POSITION_B = (int)(24.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
+    public static final int ALGAE_POSITION_A = (int)(12.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
+    public static final int ALGAE_POSITION_B = (int)(23.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
 
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
     public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
@@ -128,17 +128,17 @@ public final class Constants
     public static final double ROT_SETPOINT_REEF_ALIGNMENT_RIGHT = 0;//-13;
     public static final double ROT_TOLERANCE_REEF_ALIGNMENT_RIGHT = 1;
     public static final double X_SETPOINT_REEF_ALIGNMENT_RIGHT = -0.2;
-    public static final double X_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_RIGHT = 1;
     public static final double Y_SETPOINT_REEF_ALIGNMENT_RIGHT = .43; 
-    public static final double Y_TOLERANCE_REEF_ALIGNMENT_RIGHT = 2;
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_RIGHT = 1;
     
     // LEFT CAMERA SETPOINTS (limelight-left)  
     public static final double ROT_SETPOINT_REEF_ALIGNMENT_LEFT = 0;
     public static final double ROT_TOLERANCE_REEF_ALIGNMENT_LEFT = 1;
     public static final double X_SETPOINT_REEF_ALIGNMENT_LEFT = 0.2;
-    public static final double X_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    public static final double X_TOLERANCE_REEF_ALIGNMENT_LEFT = 1;
     public static final double Y_SETPOINT_REEF_ALIGNMENT_LEFT = .1; // Base Y setpoint for left camera
-    public static final double Y_TOLERANCE_REEF_ALIGNMENT_LEFT = 2;
+    public static final double Y_TOLERANCE_REEF_ALIGNMENT_LEFT = 1;
     
     // SPECIAL CROSS-CAMERA OFFSET: Right alignment using left camera
     public static final double Y_OFFSET_RIGHT_ALIGN_ON_LEFT_CAMERA = 0.2; // Additional offset when aligning right with left camera
