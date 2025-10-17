@@ -120,8 +120,8 @@ public final class Constants
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 3;
-    public static final double Y_REEF_ALIGNMENT_P = 3.5;
+    public static final double X_REEF_ALIGNMENT_P = 6;
+    public static final double Y_REEF_ALIGNMENT_P = 7;
     public static final double ROT_REEF_ALIGNMENT_P = 0.1;
   
     // RIGHT CAMERA SETPOINTS (limelight-right)

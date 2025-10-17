@@ -282,7 +282,8 @@ public class RobotContainer
       buttons.getDriverPovDown().onTrue(decreaseCommand);
       
       // Intake control on left bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      buttons.getDriverLeftBumper().onTrue(
+      // CHANGED: Must hold down left bumper to maintain alignment
+      buttons.getDriverLeftBumper().whileTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -294,10 +295,13 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
         ).withName("LeftBumper_LeftAlign_Stage1_AutoShooter_0.5s")
-      );
+      ).onFalse(Commands.runOnce(() -> {
+        System.out.println("Left bumper released - stopping alignment");
+      }));
 
       // Right bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      buttons.getDriverRightBumper().onTrue(
+      // CHANGED: Must hold down right bumper to maintain alignment
+      buttons.getDriverRightBumper().whileTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -309,13 +313,16 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
         ).withName("RightBumper_RightAlign_Stage1_AutoShooter_0.5s")
-      );
+      ).onFalse(Commands.runOnce(() -> {
+        System.out.println("Right bumper released - stopping alignment");
+      }));
 
       // Reset resistance detection on start button
       buttons.getDriverStart().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
       
       // Automated sequences on triggers with alignment - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      buttons.getDriverLeftTrigger().onTrue(
+      // CHANGED: Must hold down left trigger to maintain alignment
+      buttons.getDriverLeftTrigger().whileTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -327,9 +334,12 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
         ).withName("LeftTrigger_LeftAlign_Stage2_AutoShooter_0.5s")
-      );
+      ).onFalse(Commands.runOnce(() -> {
+        System.out.println("Left trigger released - stopping alignment");
+      }));
       
-      buttons.getDriverRightTrigger().onTrue(
+      // CHANGED: Must hold down right trigger to maintain alignment
+      buttons.getDriverRightTrigger().whileTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase, 
                                    () -> buttons.getDriverLeftY(), 
@@ -341,7 +351,9 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
         ).withName("RightTrigger_RightAlign_Stage2_AutoShooter_0.5s")
-      );
+      ).onFalse(Commands.runOnce(() -> {
+        System.out.println("Right trigger released - stopping alignment");
+      }));
 
       // Unused buttons for future expansion
       buttons.getDriverBack().whileTrue(Commands.none());
