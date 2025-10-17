@@ -20,12 +20,12 @@ public class Hang extends SubsystemBase {
     private static final double GEAR_RATIO = 45.0; 
     private static final double STAGE_0_ROTATIONS = 0.0;
     private static final double STAGE_1_ROTATIONS = -1.5;
-    private static final double STAGE_2_ROTATIONS = 2;
+    private static final double STAGE_2_ROTATIONS = -9.5;
     
     // Motion Magic parameters
 
     // Voltage limits
-    private static final double PEAK_FORWARD_VOLTAGE = 15.5;    
+    private static final double PEAK_FORWARD_VOLTAGE = 50;    
     private static final double PEAK_REVERSE_VOLTAGE = -3.5;
     
     // Current stage tracking
