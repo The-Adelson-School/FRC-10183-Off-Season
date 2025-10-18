@@ -4,7 +4,6 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
@@ -168,7 +167,7 @@ public class AlignToReefNew extends Command {
       if((Math.abs(yController.getError()) > .5) 
         || Math.abs(rotController.getError())>20)
       {
-        xSpeed*=.25;
+       // xSpeed*=.25;
       }
     //  System.out.println(yController.getError()+","+rotController.getError());
     //.75
@@ -286,31 +285,17 @@ public class AlignToReefNew extends Command {
     double rx = Math.abs(rightXSupplier.getAsDouble());
     boolean override = rx > DRIVER_INPUT_THRESHOLD||side>DRIVER_INPUT_THRESHOLD||forward>DRIVER_INPUT_THRESHOLD;
 
-    SmartDashboard.putBoolean("Driver Override", override);
     return override;
   }
 
   private void putDebug(double[] avg, double[] left, double[] right,
                         boolean isCurrentlyAligned, boolean neitherSees) {
-    SmartDashboard.putBoolean("Alignment Completed", alignmentCompleted);
-    SmartDashboard.putBoolean("Shooter Active", shooterActivated);
-    SmartDashboard.putBoolean("Driver Override", driverOverride);
-
-    SmartDashboard.putBoolean("LL Left TV", LimelightHelpers.getTV(LIMELIGHTLEFT));
-    SmartDashboard.putBoolean("LL Right TV", LimelightHelpers.getTV(LIMELIGHTRIGHT));
-    SmartDashboard.putBoolean("Neither LL Sees", neitherSees);
-
-    SmartDashboard.putBoolean("Currently At Setpoint", isCurrentlyAligned);
-    SmartDashboard.putNumber("Validation Timer", stopTimer.get());
-    SmartDashboard.putBoolean("Validation Time Met",
-        stopTimer.hasElapsed(VisionConstants.POSE_VALIDATION_TIME));
+   
+        stopTimer.hasElapsed(VisionConstants.POSE_VALIDATION_TIME);
 
     if (avg != null && avg.length >= 5) {
-      SmartDashboard.putNumber("AvgPose.X(targetSpace)", avg[0]);
-      SmartDashboard.putNumber("AvgPose.Z(targetSpace)", avg[2]);
-      SmartDashboard.putNumber("AvgPose.Yaw(targetSpace)", avg[4]);
+     
     } else {
-      SmartDashboard.putString("AvgPose", "null");
     }
   }
 }

@@ -39,9 +39,8 @@ public final class Constants
     public static final int LEVEL_TWO = (int)(37.7 * COUNTS_PER_INCH);
     public static final int LEVEL_THREE = (int)(50.0 * COUNTS_PER_INCH); // NEW: Stage 3 height
     
-    // NEW: Algae kicker specific elevator positions
     public static final int ALGAE_POSITION_A = (int)(12.0 * COUNTS_PER_INCH); // Height for tags 17,11,7,21,9,19
-    public static final int ALGAE_POSITION_B = (int)(23.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
+    public static final int ALGAE_POSITION_B = (int)(25.0 * COUNTS_PER_INCH); // Height for tags 18,7,22,6,8,20
 
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 90.0;   
     public static final double MOTION_MAGIC_ACCELERATION = 1800.0;    
@@ -120,8 +119,8 @@ public final class Constants
   }
 
   public static class VisionConstants{
-    public static final double X_REEF_ALIGNMENT_P = 6;
-    public static final double Y_REEF_ALIGNMENT_P = 7;
+    public static final double X_REEF_ALIGNMENT_P = 3;
+    public static final double Y_REEF_ALIGNMENT_P = 3.5;
     public static final double ROT_REEF_ALIGNMENT_P = 0.1;
   
     // RIGHT CAMERA SETPOINTS (limelight-right)

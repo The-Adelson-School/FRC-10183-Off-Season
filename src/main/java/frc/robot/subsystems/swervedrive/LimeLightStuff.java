@@ -160,11 +160,7 @@ public class LimeLightStuff {
             double yawRateDegPerSec = Math.toDegrees(yawRateRadPerSec);
             
             // Debug output
-            SmartDashboard.putNumber("Vision Yaw Input (rad)", yawRadians);
-            SmartDashboard.putNumber("Vision Yaw Input (deg)", yawDegrees);
-            SmartDashboard.putNumber("Vision Yaw Rate Input (rad/s)", yawRateRadPerSec);
-            SmartDashboard.putNumber("Vision Yaw Rate Input (deg/s)", yawRateDegPerSec);
-            SmartDashboard.putBoolean("MegaTag2 Enabled", true);
+        
             
             // IMPORTANT: This sends robot orientation TO the Limelight to help with pose estimation
             // The Limelight uses this data internally but does NOT send gyro data back to our odometry
@@ -189,7 +185,6 @@ public class LimeLightStuff {
             );
             
         } else {
-            SmartDashboard.putBoolean("MegaTag2 Enabled", false);
         }
     }
     
@@ -291,9 +286,7 @@ public class LimeLightStuff {
                 if (!hasPerformedInitialOdometryReset && odometryResetCallback != null) {
                     hasPerformedInitialOdometryReset = true;
                     odometryResetCallback.accept(poseEstimate.pose);
-                    System.out.println("INITIAL ODOMETRY RESET: Set robot pose to " + poseEstimate.pose + " from " + camera.getName());
-                    SmartDashboard.putBoolean("Vision Odometry Reset Complete", true);
-                    SmartDashboard.putString("Vision Odometry Reset Source", camera.getName());
+    
                 }
                 
                 // Calculate confidence based on tag count, distance, and ambiguity
@@ -488,11 +481,7 @@ public class LimeLightStuff {
         SmartDashboard.putNumber("Left Camera Tags", LimelightHelpers.getTargetCount(leftCamera.getName()));
         
         // Debug info for ghost robot prevention
-        SmartDashboard.putBoolean("Right Camera Has Current Pose", currentRightCameraPose != null);
-        SmartDashboard.putBoolean("Left Camera Has Current Pose", currentLeftCameraPose != null);
-        SmartDashboard.putNumber("Right Camera Processed Measurements", rightCameraMeasurements);
-        SmartDashboard.putNumber("Left Camera Processed Measurements", leftCameraMeasurements);
-        SmartDashboard.putBoolean("Initial Odometry Reset Done", hasPerformedInitialOdometryReset);
+        
     }
     
     /**

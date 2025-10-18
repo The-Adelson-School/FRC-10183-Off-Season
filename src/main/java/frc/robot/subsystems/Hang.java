@@ -7,6 +7,9 @@ import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.networktables.GenericEntry;
 
 public class Hang extends SubsystemBase {
     private final TalonFX climbMotor;
@@ -22,58 +25,56 @@ public class Hang extends SubsystemBase {
     private static final double STAGE_1_ROTATIONS = -1.5;
     private static final double STAGE_2_ROTATIONS = -9.5;
     
-    // Motion Magic parameters
 
-    // Voltage limits
     private static final double PEAK_FORWARD_VOLTAGE = 50;    
     private static final double PEAK_REVERSE_VOLTAGE = -3.5;
     
-    // Current stage tracking
     private int currentStage = 0;
     
-    // Motion Magic control request
     private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0);
     
+    // Shuffleboard entries
+    private final ShuffleboardTab hangTab = Shuffleboard.getTab("Hang");
+    private final GenericEntry climbMotorEncoderEntry;
+    private final GenericEntry climbMotorRotationsEntry;
+    private final GenericEntry currentStageEntry;
+    
     public Hang() {
-        // Initialize climb motor
         climbMotor = new TalonFX(CLIMB_MOTOR_ID, "CANivore");
         
-        // Initialize climber intake motor
         climberIntakeMotor = new TalonFX(CLIMBER_INTAKE_ID, "CANivore");
+        
+        // Initialize Shuffleboard entries
+        climbMotorEncoderEntry = hangTab.add("Climb Motor Encoder", 0.0).getEntry();
+        climbMotorRotationsEntry = hangTab.add("Climb Motor Rotations", 0.0).getEntry();
+        currentStageEntry = hangTab.add("Current Stage", 0).getEntry();
         
         configureMotors();
         
-        // Start at stage 0
         setStage(0);
     }
     
     private void configureMotors() {
-        // Configure climb motor for Motion Magic
         TalonFXConfiguration climbConfig = new TalonFXConfiguration();
         
-        // Motion Magic configuration using proper config objects
         MotionMagicConfigs motionMagicConfigs = climbConfig.MotionMagic;
         motionMagicConfigs.MotionMagicCruiseVelocity = 90;
         motionMagicConfigs.MotionMagicAcceleration = 1800;
         
-        // PID configuration using proper config objects
         Slot0Configs slot0Configs = climbConfig.Slot0;
-        slot0Configs.kP = 15.0; // Proportional gain
-        slot0Configs.kI = 0.1;  // Integral gain
-        slot0Configs.kD = 0.03;  // Derivative gain
-        slot0Configs.kV = 0.2; // Feed forward gain
+        slot0Configs.kP = 15.0;
+        slot0Configs.kI = 0.1;  
+        slot0Configs.kD = 0.03;  
+        slot0Configs.kV = 0.2; 
         
-        // Motor configuration
         climbConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         climbConfig.MotorOutput.PeakForwardDutyCycle = PEAK_FORWARD_VOLTAGE / 12.0;
         climbConfig.MotorOutput.PeakReverseDutyCycle = PEAK_REVERSE_VOLTAGE / 12.0;
         climbConfig.CurrentLimits.SupplyCurrentLimit = 40.0;
         climbConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
         
-        // Apply configuration
         climbMotor.getConfigurator().apply(climbConfig);
         
-        // Configure climber intake motor (simple configuration)
         TalonFXConfiguration intakeConfig = new TalonFXConfiguration();
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         intakeConfig.CurrentLimits.SupplyCurrentLimit = 30.0;
@@ -81,16 +82,13 @@ public class Hang extends SubsystemBase {
         
         climberIntakeMotor.getConfigurator().apply(intakeConfig);
         
-        // Reset encoder positions
         climbMotor.setPosition(0.0);
         climberIntakeMotor.setPosition(0.0);
         
         System.out.println("Hang subsystem motors configured successfully");
     }
     
-    /**
-     * Increase stage by 1 when D-pad Right is pressed (0→1→2, stops at 2)
-     */
+  
     public void increaseStage() {
         System.out.println("HANG DEBUG: increaseStage() called - current stage: " + currentStage);
         if (currentStage < 2) {
@@ -102,9 +100,7 @@ public class Hang extends SubsystemBase {
         }
     }
     
-    /**
-     * Decrease stage by 1 when D-pad Left is pressed (2→1→0, stops at 0)
-     */
+
     public void decreaseStage() {
         System.out.println("HANG DEBUG: decreaseStage() called - current stage: " + currentStage);
         if (currentStage > 0) {
@@ -116,9 +112,7 @@ public class Hang extends SubsystemBase {
         }
     }
     
-    /**
-     * Cycle to the next stage when Y button is pressed
-     */
+  
     public void cycleStage() {
         System.out.println("HANG DEBUG: cycleStage() called - current stage: " + currentStage);
         currentStage = (currentStage + 1) % 3; // Cycle through 0, 1, 2, then back to 0
@@ -128,9 +122,7 @@ public class Hang extends SubsystemBase {
         System.out.println("Hang: Cycling to stage " + currentStage);
     }
     
-    /**
-     * Set the elevator to a specific stage
-     */
+  
     public void setStage(int stage) {
         System.out.println("HANG DEBUG: setStage(" + stage + ") called");
         currentStage = Math.max(0, Math.min(2, stage)); // Clamp between 0-2
@@ -256,11 +248,16 @@ public class Hang extends SubsystemBase {
         double currentPos = climbMotor.getPosition().getValueAsDouble();
         double currentRotations = getCurrentRotations();
         
-        // Print position every 50 cycles (about once per second at 50Hz)
-        if (Math.random() < 0.02) { // 2% chance each cycle = ~once per second
-            System.out.println("HANG TELEMETRY: Stage=" + currentStage + 
-                             ", Motor Position=" + String.format("%.2f", currentPos) + 
-                             ", Output Rotations=" + String.format("%.2f", currentRotations));
+       
+        climbMotorEncoderEntry.setDouble(currentPos);
+        climbMotorRotationsEntry.setDouble(currentRotations);
+        currentStageEntry.setInteger(currentStage);
+       
+        if (Math.random() < 0.02) {
+            System.out.println( 
+                             "Motor Rotations=" + String.format("%.2f", currentPos) + 
+                             "Real Rotations=" + String.format("%.2f", currentRotations));
+                             
         }
     }
 }

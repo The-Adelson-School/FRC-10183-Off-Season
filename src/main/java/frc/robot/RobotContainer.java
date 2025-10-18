@@ -282,8 +282,7 @@ public class RobotContainer
       buttons.getDriverPovDown().onTrue(decreaseCommand);
       
       // Intake control on left bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      // CHANGED: Must hold down left bumper to maintain alignment
-      buttons.getDriverLeftBumper().whileTrue(
+      buttons.getDriverLeftBumper().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -295,13 +294,10 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
         ).withName("LeftBumper_LeftAlign_Stage1_AutoShooter_0.5s")
-      ).onFalse(Commands.runOnce(() -> {
-        System.out.println("Left bumper released - stopping alignment");
-      }));
+      );
 
       // Right bumper - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      // CHANGED: Must hold down right bumper to maintain alignment
-      buttons.getDriverRightBumper().whileTrue(
+      buttons.getDriverRightBumper().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -313,16 +309,13 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_ONE))
           )
         ).withName("RightBumper_RightAlign_Stage1_AutoShooter_0.5s")
-      ).onFalse(Commands.runOnce(() -> {
-        System.out.println("Right bumper released - stopping alignment");
-      }));
+      );
 
       // Reset resistance detection on start button
       buttons.getDriverStart().onTrue(new InstantCommand(() -> elevator.resetResistanceDetection(), elevator));
       
       // Automated sequences on triggers with alignment - WITH DRIVER OVERRIDE AND AUTO SHOOTER (0.5 seconds after alignment)
-      // CHANGED: Must hold down left trigger to maintain alignment
-      buttons.getDriverLeftTrigger().whileTrue(
+      buttons.getDriverLeftTrigger().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(false, drivebase,
                                    () -> buttons.getDriverLeftY(), 
@@ -334,12 +327,9 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
         ).withName("LeftTrigger_LeftAlign_Stage2_AutoShooter_0.5s")
-      ).onFalse(Commands.runOnce(() -> {
-        System.out.println("Left trigger released - stopping alignment");
-      }));
+      );
       
-      // CHANGED: Must hold down right trigger to maintain alignment
-      buttons.getDriverRightTrigger().whileTrue(
+      buttons.getDriverRightTrigger().onTrue(
         new ParallelCommandGroup(
           new AlignToReefNew(true, drivebase, 
                                    () -> buttons.getDriverLeftY(), 
@@ -351,9 +341,7 @@ public class RobotContainer
             Commands.waitUntil(() -> elevator.isElevatorAtTarget(ElevatorConstants.LEVEL_TWO))
           )
         ).withName("RightTrigger_RightAlign_Stage2_AutoShooter_0.5s")
-      ).onFalse(Commands.runOnce(() -> {
-        System.out.println("Right trigger released - stopping alignment");
-      }));
+      );
 
       // Unused buttons for future expansion
       buttons.getDriverBack().whileTrue(Commands.none());
@@ -374,28 +362,8 @@ public class RobotContainer
       */
       buttons.getOperatorX().whileTrue(Commands.none()); // Available for future use
       
-      // Operator Xbox D-pad controls for manual CLIMBER motor (not intake)
-      // D-pad Right - Manual climber motor forward at full speed (while held)
-      buttons.getOperatorPovRight()
-        .whileTrue(Commands.run(() -> hang.setManualPower(1.0), hang))
-        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
-      
-      // D-pad Left - Manual climber motor reverse at full speed (while held)
-      buttons.getOperatorPovLeft()
-        .whileTrue(Commands.run(() -> hang.setManualPower(-1.0), hang))
-        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
-      
-      // Driver D-pad Right - Increase hang stage (0→1→2, stops at 2)
-      buttons.getDriverPovRight().onTrue(new InstantCommand(() -> {
-        System.out.println("D-pad Right pressed - increasing hang stage");
-        hang.increaseStage();
-      }, hang));
-      
-      // Driver D-pad Left - Decrease hang stage (2→1→0, stops at 0)
-      buttons.getDriverPovLeft().onTrue(new InstantCommand(() -> {
-        System.out.println("D-pad Left pressed - decreasing hang stage");
-        hang.decreaseStage();
-      }, hang));
+      // Y button - Cycle through hang stages (0→1→2→0...)
+      buttons.getOperatorY().onTrue(Commands.runOnce(() -> hang.cycleStage(), hang));
      
     }
     /* */
