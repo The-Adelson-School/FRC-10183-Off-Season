@@ -506,22 +506,9 @@ public class ElevatorSubsystem extends SubsystemBase {
             shooterMotor.setNeutralMode(NeutralModeValue.Coast);
             shooterMotor.set(ElevatorConstants.SHOOTER_ON);
             
-            // FIXED: Handle intake in stage 0 (stowed level)
             if (stage == 0) {
-                // ALWAYS spin intake in stowed level during teleop (not autonomous)
-                if (!manualIntakeControl) {
-                    intakeMotor.set(ElevatorConstants.INTAKE_OUT);
-                    System.out.println("TELEOP: Intake spinning automatically in stowed level");
-                } else {
-                    // Manual control active (autonomous mode)
-                    if (manualIntakeState) {
-                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
-                    } else {
-                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
-                    }
-                }
+                intakeMotor.set(ElevatorConstants.INTAKE_OUT);
             } else {
-                // For stages 1, 2, 3 - only manual control
                 if (manualIntakeControl) {
                     if (manualIntakeState) {
                         intakeMotor.set(ElevatorConstants.INTAKE_OUT);
@@ -529,7 +516,6 @@ public class ElevatorSubsystem extends SubsystemBase {
                         intakeMotor.set(ElevatorConstants.INTAKE_STOP);
                     }
                 } else {
-                    // No automatic intake in elevated stages
                     intakeMotor.set(ElevatorConstants.INTAKE_STOP);
                 }
             }
@@ -541,21 +527,9 @@ public class ElevatorSubsystem extends SubsystemBase {
             
             shooterMotor.set(ElevatorConstants.SHOOTER_STOP);
             
-            // FIXED: Handle intake when shooter not running
             if (stage == 0) {
-                // ALWAYS spin intake in stowed level during teleop (not autonomous)
-                if (!manualIntakeControl) {
-                    intakeMotor.set(ElevatorConstants.INTAKE_OUT);
-                } else {
-                    // Manual control active (autonomous mode)
-                    if (manualIntakeState) {
-                        intakeMotor.set(ElevatorConstants.INTAKE_OUT);
-                    } else {
-                        intakeMotor.set(ElevatorConstants.INTAKE_STOP);
-                    }
-                }
+                intakeMotor.set(ElevatorConstants.INTAKE_OUT);
             } else {
-                // For stages 1, 2, 3 - only manual control
                 if (manualIntakeControl) {
                     if (manualIntakeState) {
                         intakeMotor.set(ElevatorConstants.INTAKE_OUT);
@@ -563,7 +537,6 @@ public class ElevatorSubsystem extends SubsystemBase {
                         intakeMotor.set(ElevatorConstants.INTAKE_STOP);
                     }
                 } else {
-                    // No automatic intake in elevated stages
                     intakeMotor.set(ElevatorConstants.INTAKE_STOP);
                 }
             }

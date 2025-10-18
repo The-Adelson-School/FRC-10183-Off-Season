@@ -348,21 +348,27 @@ public class RobotContainer
 
       // Operator controller - all functions moved to driver controller
       // Keep operator available for additional functions if needed
-      // Climber UP - A button (while held)
-      /* */
-      /* 
-      buttons.getOperatorA()
-        .whileTrue(Commands.run(() -> m_Climber.climberteleop(1.0), m_Climber))
-        .onFalse(Commands.runOnce(m_Climber::stop, m_Climber));
-
-      // Climber DOWN - B button (while held)
-      buttons.getOperatorB()
-        .whileTrue(Commands.run(() -> m_Climber.climberteleop(-1.0), m_Climber))
-        .onFalse(Commands.runOnce(m_Climber::stop, m_Climber));
-      */
       buttons.getOperatorX().whileTrue(Commands.none()); // Available for future use
       
-      // Y button - Cycle through hang stages (0→1→2→0...)
+
+      buttons.getOperatorPovRight()
+        .whileTrue(Commands.run(() -> hang.setManualPower(1.0), hang))
+        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
+      
+   
+      buttons.getOperatorPovLeft()
+        .whileTrue(Commands.run(() -> hang.setManualPower(-1.0), hang))
+        .onFalse(Commands.runOnce(() -> hang.setManualPower(0.0), hang));
+      
+
+      buttons.getDriverPovRight().onTrue(new InstantCommand(() -> {
+        hang.increaseStage();
+      }, hang));
+      
+      buttons.getDriverPovLeft().onTrue(new InstantCommand(() -> {
+        hang.decreaseStage();
+      }, hang));
+      
       buttons.getOperatorY().onTrue(Commands.runOnce(() -> hang.cycleStage(), hang));
      
     }
@@ -407,7 +413,7 @@ public class RobotContainer
       }),
       
       // Step 5: Run the actual autonomous command with error handling
-      drivebase.getAutonomousCommand("RED RIGHT")
+      drivebase.getAutonomousCommand("Forward")
         .handleInterrupt(() -> {
           drivebase.drive(new ChassisSpeeds(0, 0, 0));
         })

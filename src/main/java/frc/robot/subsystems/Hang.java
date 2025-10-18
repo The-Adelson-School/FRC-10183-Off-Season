@@ -22,8 +22,8 @@ public class Hang extends SubsystemBase {
     // Gear ratio and stage positions
     private static final double GEAR_RATIO = 45.0; 
     private static final double STAGE_0_ROTATIONS = 0.0;
-    private static final double STAGE_1_ROTATIONS = -1.5;
-    private static final double STAGE_2_ROTATIONS = -9.5;
+    private static final double STAGE_1_ROTATIONS = 1.5;
+    private static final double STAGE_2_ROTATIONS = 6.7;
     
 
     private static final double PEAK_FORWARD_VOLTAGE = 50;    

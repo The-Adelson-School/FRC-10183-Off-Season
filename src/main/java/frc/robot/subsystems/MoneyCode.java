@@ -16,10 +16,23 @@ public class MoneyCode {
         this.drivebase = drivebase;
         this.elevator = elevator;
     }
+
+    public Command Forward() {
+        return Commands.sequence(
+            Commands.run(() -> drivebase.drive(new Translation2d(3, 0), 0.5, false)).withTimeout(1.0), 
+            Commands.runOnce(() -> drivebase.drive(new Translation2d(0, 0), 0, false)),
+            
+            Commands.run(() -> drivebase.drive(new Translation2d(0, 0), 0, false)).withTimeout(1.0),
+            Commands.runOnce(() -> drivebase.drive(new Translation2d(0, 0), 0, false))
+            
+        );
+    }
+
+   
     
     public Command getRightAuto() {
         return Commands.sequence(
-            Commands.run(() -> drivebase.drive(new Translation2d(0, 0), 0.5, false)).withTimeout(1.0), //rad
+            Commands.run(() -> drivebase.drive(new Translation2d(0, 0), 0.5, false)).withTimeout(1.0), 
             Commands.runOnce(() -> drivebase.drive(new Translation2d(0, 0), 0, false)),
             
             Commands.run(() -> drivebase.drive(new Translation2d(1, 0), 0, false)).withTimeout(1.0),
